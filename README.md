@@ -1,3 +1,6 @@
+# LC-3-PO
+An LC-3 spec compliant virtual machine implemented in Rust.
+
 ```
 
                                      /~\                           
