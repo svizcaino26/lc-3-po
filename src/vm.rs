@@ -13,6 +13,18 @@ pub struct VirtualMachine {
     registers: Registers,
 }
 
+impl VirtualMachine {
+    /// Fetches the instruction at the address stored by `PC`
+    /// and advances `PC` to the next memory location.
+    #[must_use]
+    #[allow(clippy::indexing_slicing)]
+    pub fn fetch(&mut self) -> u16 {
+        let instruction = self.memory[usize::from(self.registers.pc)];
+        self.registers.pc = self.registers.pc.wrapping_add(1);
+        instruction
+    }
+}
+
 /// Represents the LC-3 instruction set.
 pub enum Opcode {
     Br = 0,    // branch
@@ -86,5 +98,29 @@ mod tests {
         assert!(matches!(Opcode::from(0x0000), Opcode::Br));
         assert!(matches!(Opcode::from(0x1000), Opcode::Add));
         assert!(matches!(Opcode::from(0xF000), Opcode::Trap));
+    }
+
+    #[test]
+    #[allow(clippy::indexing_slicing)]
+    fn fetch_and_advance_pc() {
+        let mut vm = VirtualMachine::default();
+        vm.memory[usize::from(vm.registers.pc)] = 0x1234;
+
+        let instruction = vm.fetch();
+
+        assert_eq!(instruction, 0x1234);
+        assert_eq!(vm.registers.pc, PC_START + 1);
+    }
+
+    #[test]
+    #[allow(clippy::indexing_slicing)]
+    fn pc_wrap_around() {
+        let mut vm = VirtualMachine::default();
+        vm.registers.pc = 0xFFFF;
+        vm.memory[0xFFFF] = 0x1234;
+        let instruction = vm.fetch();
+
+        assert_eq!(instruction, 0x1234);
+        assert_eq!(vm.registers.pc, 0x0000);
     }
 }
