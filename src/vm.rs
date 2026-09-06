@@ -29,6 +29,32 @@ impl VirtualMachine {
     pub fn decode(instruction: RawInstruction) -> DecodedInstruction {
         DecodedInstruction::from(instruction)
     }
+
+    #[allow(clippy::todo)]
+    pub fn run(&mut self) {
+        loop {
+            let raw = self.fetch();
+            let decoded = DecodedInstruction::from(raw);
+            match decoded.opcode() {
+                Opcode::Br => todo!(),
+                Opcode::Add => todo!(),
+                Opcode::Ld => todo!(),
+                Opcode::St => todo!(),
+                Opcode::Jsr => todo!(),
+                Opcode::And => todo!(),
+                Opcode::Ldr => todo!(),
+                Opcode::Str => todo!(),
+                Opcode::Rti => todo!(),
+                Opcode::Not => todo!(),
+                Opcode::Ldi => todo!(),
+                Opcode::Sti => todo!(),
+                Opcode::Jmp => todo!(),
+                Opcode::Res => todo!(),
+                Opcode::Lea => todo!(),
+                Opcode::Trap => todo!(),
+            }
+        }
+    }
 }
 
 #[cfg(test)]
