@@ -6,16 +6,49 @@
 //!
 //! The four most significant bits of an instruction encode its [`Opcode`].
 
+use std::ops::RangeInclusive;
+
 /// bit shift for extacting opcode field from raw `u16` instruction
 const OPCODE_SHIFT: u16 = 12;
+const INSTRUCTION_BITS: u8 = 16;
 
 /// Represents a raw `u16` instruction read from an LC-3 program.
+#[derive(Debug, PartialEq, Eq)]
+pub enum InstructionError {
+    InvalidBitRange(RangeInclusive<u8>),
+}
+
+/// Represent the raw 16-bit instruction.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RawInstruction(u16);
 
 impl From<u16> for RawInstruction {
     fn from(value: u16) -> Self {
         Self(value)
+    }
+}
+
+impl RawInstruction {
+    /// Extracts the field defined by the given inclusive bit range.
+    /// Bits are numbered 1 - 16 from the most significant bit.
+    ///
+    /// # Errors
+    /// - If lower bound of `range` is 0.
+    /// - If lower bound of `range` > upper bound.
+    /// - If upper bound of `range` > `INSTRUCTION_BITS`.
+    #[allow(clippy::arithmetic_side_effects)]
+    pub const fn bits(&self, range: RangeInclusive<u8>) -> Result<u16, InstructionError> {
+        let start = *range.start();
+        let end = *range.end();
+
+        if start == 0 || start > end || end > INSTRUCTION_BITS {
+            return Err(InstructionError::InvalidBitRange(range));
+        }
+
+        let len = end - start + 1;
+        let shift = INSTRUCTION_BITS - end;
+        let mask = (1u16 << len) - 1;
+        Ok((self.0 >> shift) & mask)
     }
 }
 
@@ -33,6 +66,10 @@ impl DecodedInstruction {
     #[must_use]
     pub const fn opcode(&self) -> &Opcode {
         &self.opcode
+    }
+
+    pub const fn raw(self) -> RawInstruction {
+        self.raw
     }
 }
 
@@ -104,5 +141,31 @@ mod tests {
         assert!(matches!(decoded_1.opcode(), Opcode::Br));
         assert!(matches!(decoded_2.opcode(), Opcode::Add));
         assert!(matches!(decoded_3.opcode(), Opcode::Trap));
+    }
+
+    #[test]
+    fn extract_bits() {
+        let raw_1 = RawInstruction::from(0xF000);
+        let raw_2 = RawInstruction::from(0x10F0);
+        let raw_3 = RawInstruction::from(0xF020);
+
+        assert_eq!(raw_1.bits(1..=4), Ok(0x000F));
+        assert_eq!(raw_2.bits(1..=4), Ok(0x0001));
+        assert_eq!(raw_3.bits(11..=11), Ok(0x0001));
+    }
+
+    #[test]
+    fn invalid_range() {
+        let raw_1 = RawInstruction::from(0xF000);
+        let raw_2 = RawInstruction::from(0x10F0);
+
+        assert_eq!(
+            raw_1.bits(0..=4),
+            Err(InstructionError::InvalidBitRange(0..=4))
+        );
+        assert_eq!(
+            raw_2.bits(4..=17),
+            Err(InstructionError::InvalidBitRange(4..=17))
+        );
     }
 }
