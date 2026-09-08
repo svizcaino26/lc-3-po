@@ -27,3 +27,32 @@ impl From<u16> for Address {
         Self(value)
     }
 }
+
+impl Address {
+    /// Returns the address as its underlying 16-bit value.
+    #[must_use]
+    pub const fn as_u16(self) -> u16 {
+        self.0
+    }
+
+    /// Adds `rhs` to the address using 16-bit wrapping arithmetic.
+    ///
+    /// This mirrors the behavior of the LC-3's 16-bit address arithmetic:
+    /// values that exceed `0xFFFF` wrap around to the beginning of the
+    /// address space.
+    #[must_use]
+    pub const fn wrapping_add(self, rhs: u16) -> Self {
+        Self(self.0.wrapping_add(rhs))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn memory_wrap_around() {
+        let address = Address::from(0xFFFF);
+        assert_eq!(address.wrapping_add(1), Address::from(0x0000));
+    }
+}
