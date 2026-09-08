@@ -1,4 +1,4 @@
-use crate::memory::Memory;
+use crate::memory::{Address, Memory};
 
 /// Represents the amount of general purpose registers defined by the LC-3 spec.
 const GENERAL_REGISTERS_SIZE: usize = 8;
@@ -25,7 +25,7 @@ pub struct VirtualMachine {
 #[derive(Debug)]
 pub struct Registers {
     general: [u16; GENERAL_REGISTERS_SIZE],
-    pc: u16,
+    pc: Address,
     cond: ConditionFlag,
 }
 
@@ -33,7 +33,7 @@ impl Default for Registers {
     fn default() -> Self {
         Self {
             general: [0; GENERAL_REGISTERS_SIZE],
-            pc: PC_START,
+            pc: Address::from(PC_START),
             cond: ConditionFlag::default(),
         }
     }
@@ -99,13 +99,15 @@ impl From<u16> for Opcode {
 mod tests {
     use std::assert_matches;
 
+    use crate::memory::MEMORY_SIZE;
+
     use super::*;
 
     #[test]
     fn vm_default_state() {
         let vm = VirtualMachine::default();
         assert_eq!(vm.memory.len(), MEMORY_SIZE);
-        assert_eq!(vm.registers.pc, PC_START);
+        assert_eq!(vm.registers.pc, Address::from(PC_START));
         assert_matches!(vm.registers.cond, ConditionFlag::Zro);
         assert_eq!(vm.registers.general.len(), GENERAL_REGISTERS_SIZE);
     }
