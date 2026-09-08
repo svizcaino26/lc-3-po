@@ -66,8 +66,8 @@ mod tests {
     use std::assert_matches;
 
     use crate::{
-        memory::MEMORY_SIZE,
-        register::{GENERAL_REGISTERS_SIZE, PC_START},
+        memory::{Address, MEMORY_SIZE},
+        register::{ConditionFlag, GENERAL_REGISTERS_SIZE, PC_START},
     };
 
     use super::*;
@@ -76,9 +76,9 @@ mod tests {
     fn vm_default_state() {
         let vm = VirtualMachine::default();
         assert_eq!(vm.memory.len(), MEMORY_SIZE);
-        assert_eq!(vm.registers.pc, Address::from(PC_START));
-        assert_matches!(vm.registers.cond, ConditionFlag::Zro);
-        assert_eq!(vm.registers.general.len(), GENERAL_REGISTERS_SIZE);
+        assert_eq!(vm.registers.pc(), Address::from(PC_START));
+        assert_matches!(vm.registers.cond(), ConditionFlag::Zro);
+        assert_eq!(vm.registers.len(), GENERAL_REGISTERS_SIZE);
     }
 
     #[test]

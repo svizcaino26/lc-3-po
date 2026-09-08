@@ -28,7 +28,25 @@ impl Default for Registers {
     }
 }
 
-#[derive(Debug, Default)]
+impl Registers {
+    #[must_use]
+    #[allow(clippy::len_without_is_empty)]
+    pub const fn len(&self) -> usize {
+        self.general.len()
+    }
+
+    #[must_use]
+    pub const fn pc(&self) -> Address {
+        self.pc
+    }
+
+    #[must_use]
+    pub const fn cond(&self) -> ConditionFlag {
+        self.cond
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 pub enum ConditionFlag {
     Pos,
     #[default]

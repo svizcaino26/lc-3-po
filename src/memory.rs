@@ -52,7 +52,7 @@ impl Memory {
 ///
 /// Since the LC-3 uses a 16-bit address bus, all `u16` values represent
 /// valid memory addresses.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct Address(u16);
 
 impl From<u16> for Address {
