@@ -1,5 +1,5 @@
-/// Represents the amount of memory locations defined by the LC-3 spec, 65536 memory locations.
-const MEMORY_SIZE: usize = 1 << 16;
+use crate::memory::Memory;
+
 /// Represents the amount of general purpose registers defined by the LC-3 spec.
 const GENERAL_REGISTERS_SIZE: usize = 8;
 const OPCODE_SHIFT: u16 = 12;
@@ -10,22 +10,10 @@ const PC_START: u16 = 0x3000;
 ///
 /// The architecture spec defines 65536 16 bit memory locations
 /// for a total of 128 KiB of memory and 10 registers.
-///
-/// Memory is represented as an array 65536 `u16` values.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct VirtualMachine {
-    memory: Box<[u16; MEMORY_SIZE]>,
+    memory: Memory,
     registers: Registers,
-}
-
-impl Default for VirtualMachine {
-    #[allow(clippy::large_stack_arrays)]
-    fn default() -> Self {
-        Self {
-            memory: Box::new([0; MEMORY_SIZE]),
-            registers: Registers::default(),
-        }
-    }
 }
 
 /// Represents the LC-3 architecture registers.
