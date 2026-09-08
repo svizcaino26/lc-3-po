@@ -67,7 +67,7 @@ mod tests {
 
     use crate::{
         memory::{Address, MEMORY_SIZE},
-        register::{ConditionFlag, GENERAL_REGISTERS_SIZE, PC_START},
+        register::{ConditionCode, GENERAL_REGISTERS_SIZE, PC_START},
     };
 
     use super::*;
@@ -77,7 +77,7 @@ mod tests {
         let vm = VirtualMachine::default();
         assert_eq!(vm.memory.len(), MEMORY_SIZE);
         assert_eq!(vm.registers.pc(), Address::from(PC_START));
-        assert_matches!(vm.registers.cond(), ConditionFlag::Zro);
+        assert_matches!(vm.registers.cond(), ConditionCode::Zro);
         assert_eq!(vm.registers.len(), GENERAL_REGISTERS_SIZE);
     }
 
