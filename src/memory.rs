@@ -1,7 +1,20 @@
-/// Represents the amount of memory locations defined by the LC-3 spec, 65536 memory locations.
-const MEMORY_SIZE: usize = 1 << 16;
+//! Memory and address types for the LC-3 virtual machine.
+//!
+//! The LC-3 has a 16-bit address space containing 65,536 addressable
+//! memory locations. Each location stores a 16-bit word, for a total
+//! memory capacity of 128 KiB.
+//!
+//! [`Memory`] provides access to LC-3 memory using [`Address`], which
+//! represents a valid 16-bit memory address.
 
-/// Memory is represented as an array 65536 `u16` values.
+/// Number of addressable memory locations defined by the LC-3 architecture.
+pub(crate) const MEMORY_SIZE: usize = 1 << 16;
+
+/// LC-3 memory containing 65,536 16-bit words.
+///
+/// Memory is indexed using [`Address`] values. Since [`Address`] is
+/// represented by a `u16`, every possible address is guaranteed to fall
+/// within the LC-3 address space.
 #[derive(Debug)]
 pub struct Memory {
     words: Box<[u16; MEMORY_SIZE]>,
@@ -15,6 +28,26 @@ impl Default for Memory {
         }
     }
 }
+
+impl Memory {
+    /// Reads the 16-bit word stored at `address`.
+    ///
+    /// Every [`Address`] represents a valid location in the LC-3 address space,
+    /// so this operation cannot address memory outside the allocated buffer.
+    #[must_use]
+    #[allow(clippy::indexing_slicing)]
+    pub fn read(&self, address: Address) -> u16 {
+        self.words[usize::from(address.as_u16())]
+    }
+
+    /// Returns the number of addressable memory locations.
+    #[must_use]
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.words.len()
+    }
+}
+
 /// Represents a 16-bit address in the LC-3 address space.
 ///
 /// Since the LC-3 uses a 16-bit address bus, all `u16` values represent
