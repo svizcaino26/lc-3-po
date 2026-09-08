@@ -1,10 +1,7 @@
-use crate::memory::{Address, Memory};
+use crate::{memory::Memory, register::Register};
 
 /// Represents the amount of general purpose registers defined by the LC-3 spec.
-const GENERAL_REGISTERS_SIZE: usize = 8;
 const OPCODE_SHIFT: u16 = 12;
-/// Starting memory address for user space.
-const PC_START: u16 = 0x3000;
 
 /// Represents an LC-3 virtual machine.
 ///
@@ -13,38 +10,7 @@ const PC_START: u16 = 0x3000;
 #[derive(Debug, Default)]
 pub struct VirtualMachine {
     memory: Memory,
-    registers: Registers,
-}
-
-/// Represents the LC-3 architecture registers.
-///
-/// The spec defines 10 registers total:
-/// - 8 general purpose registers R0 - R7 Represented as an array of 8 `u16` values.
-/// - 1 PC (Program Counter) register.
-/// - 1 COND (Condition Flags) register.
-#[derive(Debug)]
-pub struct Registers {
-    general: [u16; GENERAL_REGISTERS_SIZE],
-    pc: Address,
-    cond: ConditionFlag,
-}
-
-impl Default for Registers {
-    fn default() -> Self {
-        Self {
-            general: [0; GENERAL_REGISTERS_SIZE],
-            pc: Address::from(PC_START),
-            cond: ConditionFlag::default(),
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-pub enum ConditionFlag {
-    Pos,
-    #[default]
-    Zro,
-    Neg,
+    registers: Register,
 }
 
 /// Represents the LC-3 instruction set.
@@ -99,7 +65,10 @@ impl From<u16> for Opcode {
 mod tests {
     use std::assert_matches;
 
-    use crate::memory::MEMORY_SIZE;
+    use crate::{
+        memory::MEMORY_SIZE,
+        register::{GENERAL_REGISTERS_SIZE, PC_START},
+    };
 
     use super::*;
 
