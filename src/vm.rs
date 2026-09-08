@@ -1,4 +1,4 @@
-use crate::{memory::Memory, register::Register};
+use crate::{memory::Memory, register::Registers};
 
 /// Represents the amount of general purpose registers defined by the LC-3 spec.
 const OPCODE_SHIFT: u16 = 12;
@@ -10,7 +10,7 @@ const OPCODE_SHIFT: u16 = 12;
 #[derive(Debug, Default)]
 pub struct VirtualMachine {
     memory: Memory,
-    registers: Register,
+    registers: Registers,
 }
 
 /// Represents the LC-3 instruction set.

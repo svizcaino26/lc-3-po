@@ -1,3 +1,5 @@
+use std::ops::{Index, IndexMut};
+
 use crate::memory::Address;
 
 /// Starting memory address for user space.
@@ -10,13 +12,13 @@ pub(crate) const GENERAL_REGISTERS_SIZE: usize = 8;
 /// - 1 PC (Program Counter) register.
 /// - 1 COND (Condition Flags) register.
 #[derive(Debug)]
-pub struct Register {
+pub struct Registers {
     general: [u16; GENERAL_REGISTERS_SIZE],
     pc: Address,
     cond: ConditionFlag,
 }
 
-impl Default for Register {
+impl Default for Registers {
     fn default() -> Self {
         Self {
             general: [0; GENERAL_REGISTERS_SIZE],
@@ -32,4 +34,53 @@ pub enum ConditionFlag {
     #[default]
     Zro,
     Neg,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Register {
+    R0 = 0,
+    R1 = 1,
+    R2 = 2,
+    R3 = 3,
+    R4 = 4,
+    R5 = 5,
+    R6 = 6,
+    R7 = 7,
+}
+
+impl From<Register> for usize {
+    #[allow(clippy::as_conversions)]
+    fn from(register: Register) -> Self {
+        register as Self
+    }
+}
+
+impl Index<Register> for Registers {
+    type Output = u16;
+
+    #[allow(clippy::as_conversions, clippy::indexing_slicing)]
+    fn index(&self, register: Register) -> &Self::Output {
+        &self.general[usize::from(register)]
+    }
+}
+
+impl IndexMut<Register> for Registers {
+    #[allow(clippy::as_conversions, clippy::indexing_slicing)]
+    fn index_mut(&mut self, register: Register) -> &mut Self::Output {
+        &mut self.general[usize::from(register)]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn register_indexing() {
+        let mut registers = Registers::default();
+        let index = Register::R1;
+        registers[index] = 0x00FF;
+
+        assert_eq!(registers[index], 0x00FF);
+    }
 }
