@@ -15,3 +15,15 @@ impl Default for Memory {
         }
     }
 }
+/// Represents a 16-bit address in the LC-3 address space.
+///
+/// Since the LC-3 uses a 16-bit address bus, all `u16` values represent
+/// valid memory addresses.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Address(u16);
+
+impl From<u16> for Address {
+    fn from(value: u16) -> Self {
+        Self(value)
+    }
+}
