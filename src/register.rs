@@ -57,6 +57,18 @@ impl Registers {
     pub const fn cond(&self) -> ConditionCode {
         self.cond
     }
+
+    /// Advance the `PC` to the next memory [`Address`].
+    /// If current `PC` points to the last address in the LC-3 space, it wraps
+    /// around to the beginning.
+    pub const fn advance_pc(&mut self) {
+        self.pc = self.pc.wrapping_add(1);
+    }
+
+    /// Sets `PC` to a specific [`Address`] ensuring a valid LC-3 memory location.
+    pub const fn set_pc(&mut self, address: Address) {
+        self.pc = address;
+    }
 }
 
 /// Represents the LC-3 condition code.

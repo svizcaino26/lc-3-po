@@ -21,7 +21,7 @@ impl VirtualMachine {
     #[allow(clippy::indexing_slicing)]
     pub fn fetch(&mut self) -> RawInstruction {
         let raw = self.memory[self.registers.pc()];
-        self.registers.pc = self.registers.pc.wrapping_add(1);
+        self.registers.advance_pc();
         RawInstruction::from(raw)
     }
 
@@ -81,23 +81,24 @@ mod tests {
     #[allow(clippy::indexing_slicing)]
     fn fetch_and_advance_pc() {
         let mut vm = VirtualMachine::default();
-        vm.memory[usize::from(vm.registers.pc)] = 0x1234;
+        vm.memory[vm.registers.pc()] = 0x1234;
 
         let raw = vm.fetch();
 
         assert_eq!(raw, RawInstruction::from(0x1234));
-        assert_eq!(vm.registers.pc, PC_START + 1);
+        assert_eq!(vm.registers.pc(), Address::from(PC_START + 1));
     }
 
     #[test]
     #[allow(clippy::indexing_slicing)]
     fn pc_wrap_around() {
         let mut vm = VirtualMachine::default();
-        vm.registers.pc = 0xFFFF;
-        vm.memory[0xFFFF] = 0x1234;
+        let address = Address::from(0xFFFF);
+        vm.registers.set_pc(address);
+        vm.memory[address] = 0x1234;
         let raw = vm.fetch();
 
         assert_eq!(raw, RawInstruction::from(0x1234));
-        assert_eq!(vm.registers.pc, 0x0000);
+        assert_eq!(vm.registers.pc(), Address::from(0x0000));
     }
 }

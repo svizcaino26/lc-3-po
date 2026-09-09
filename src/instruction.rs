@@ -16,6 +16,7 @@ pub struct DecodedInstruction {
 }
 
 impl DecodedInstruction {
+    #[must_use]
     pub const fn opcode(&self) -> &Opcode {
         &self.opcode
     }
