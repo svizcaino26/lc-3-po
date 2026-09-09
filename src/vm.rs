@@ -1,13 +1,12 @@
-use crate::{memory::Memory, register::Registers};
-
-/// Represents the amount of general purpose registers defined by the LC-3 spec.
-const OPCODE_SHIFT: u16 = 12;
 use crate::instruction::{DecodedInstruction, Opcode, RawInstruction};
+use crate::{memory::Memory, register::Registers};
 
 /// Represents an LC-3 virtual machine.
 ///
 /// The architecture spec defines 65536 16 bit memory locations
 /// for a total of 128 KiB of memory and 10 registers.
+/// 8 general-purpose registers, the program counter, and the
+/// condition code register.
 #[derive(Debug, Default)]
 pub struct VirtualMachine {
     memory: Memory,
@@ -15,26 +14,32 @@ pub struct VirtualMachine {
 }
 
 impl VirtualMachine {
-    /// Fetches the instruction at the address stored by `PC`
-    /// and advances `PC` to the next memory location.
+    /// Fetches the instruction at the address stored in the program counter
+    /// and advances the program counter to the next memory location.
+    ///
+    /// The program counter is advanced before the fetched instruction is
+    /// decoded or executed.
     #[must_use]
-    #[allow(clippy::indexing_slicing)]
     pub fn fetch(&mut self) -> RawInstruction {
         let raw = self.memory[self.registers.pc()];
         self.registers.advance_pc();
         RawInstruction::from(raw)
     }
 
+    /// Decodes a raw LC-3 instruction into its corresponding instruction
+    /// representation.
     #[must_use]
     pub fn decode(instruction: RawInstruction) -> DecodedInstruction {
         DecodedInstruction::from(instruction)
     }
 
+    /// Runs the virtual machine, fetching and executing instructions until
+    /// execution is terminated.
     #[allow(clippy::todo)]
     pub fn run(&mut self) {
         loop {
             let raw = self.fetch();
-            let decoded = DecodedInstruction::from(raw);
+            let decoded = Self::decode(raw);
             match decoded.opcode() {
                 Opcode::Br => todo!(),
                 Opcode::Add => todo!(),
@@ -78,7 +83,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::indexing_slicing)]
     fn fetch_and_advance_pc() {
         let mut vm = VirtualMachine::default();
         vm.memory[vm.registers.pc()] = 0x1234;
@@ -90,7 +94,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::indexing_slicing)]
     fn pc_wrap_around() {
         let mut vm = VirtualMachine::default();
         let address = Address::from(0xFFFF);

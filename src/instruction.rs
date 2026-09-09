@@ -1,6 +1,15 @@
+//! Representation and decoding of LC-3 instructions.
+//!
+//! LC-3 instructions are encoded as 16-bit values. [`RawInstruction`]
+//! represents an instruction in its encoded form, while [`DecodedInstruction`]
+//! represents its decoded form.
+//!
+//! The four most significant bits of an instruction encode its [`Opcode`].
+
 /// bit shift for extacting opcode field from raw `u16` instruction
 const OPCODE_SHIFT: u16 = 12;
 
+/// Represents a raw `u16` instruction read from an LC-3 program.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RawInstruction(u16);
 
@@ -10,6 +19,11 @@ impl From<u16> for RawInstruction {
     }
 }
 
+/// Represents an LC-3 instruction after decoding its opcode and fields.
+///
+/// The original [`RawInstruction`] is retained so that additional instruction
+/// fields can be extracted from the original encoding during instruction
+/// processing.
 pub struct DecodedInstruction {
     opcode: Opcode,
     raw: RawInstruction,
@@ -22,7 +36,10 @@ impl DecodedInstruction {
     }
 }
 
-/// Represents the LC-3 instruction set.
+/// Represents one of the 16 opcodes defined by the LC-3 instruction set.
+///
+/// The opcode is encoded in the four most significant bits of every LC-3
+/// instruction.
 pub enum Opcode {
     Br = 0,    // branch
     Add = 1,   // add
@@ -43,7 +60,10 @@ pub enum Opcode {
 }
 
 impl From<RawInstruction> for DecodedInstruction {
-    /// Extracts the opcode field from a 16-bit LC-3 instruction.
+    /// Decodes the opcode from a raw LC-3 instruction.
+    ///
+    /// The opcode is stored in the four most significant bits of the
+    /// instruction.
     ///
     /// The bit shift ensures the matched value is a number between 0 and 15.
     #[allow(clippy::unreachable)]
