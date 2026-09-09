@@ -7,6 +7,8 @@
 //! [`Memory`] provides access to LC-3 memory using [`Address`], which
 //! represents a valid 16-bit memory address.
 
+use std::ops::{Index, IndexMut};
+
 /// Number of addressable memory locations defined by the LC-3 architecture.
 pub(crate) const MEMORY_SIZE: usize = 1 << 16;
 
@@ -26,6 +28,22 @@ impl Default for Memory {
         Self {
             words: Box::new([0; MEMORY_SIZE]),
         }
+    }
+}
+
+impl Index<Address> for Memory {
+    type Output = u16;
+
+    #[allow(clippy::indexing_slicing)]
+    fn index(&self, address: Address) -> &Self::Output {
+        &self.words[usize::from(address.as_u16())]
+    }
+}
+
+impl IndexMut<Address> for Memory {
+    #[allow(clippy::indexing_slicing)]
+    fn index_mut(&mut self, address: Address) -> &mut Self::Output {
+        &mut self.words[usize::from(address.as_u16())]
     }
 }
 

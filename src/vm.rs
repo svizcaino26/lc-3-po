@@ -20,7 +20,7 @@ impl VirtualMachine {
     #[must_use]
     #[allow(clippy::indexing_slicing)]
     pub fn fetch(&mut self) -> RawInstruction {
-        let raw = self.memory[usize::from(self.registers.pc)];
+        let raw = self.memory[self.registers.pc()];
         self.registers.pc = self.registers.pc.wrapping_add(1);
         RawInstruction::from(raw)
     }
