@@ -7,6 +7,8 @@
 //! [`Memory`] provides access to LC-3 memory using [`Address`], which
 //! represents a valid 16-bit memory address.
 
+use std::ops::{Index, IndexMut};
+
 /// Number of addressable memory locations defined by the LC-3 architecture.
 pub(crate) const MEMORY_SIZE: usize = 1 << 16;
 
@@ -29,6 +31,22 @@ impl Default for Memory {
     }
 }
 
+impl Index<Address> for Memory {
+    type Output = u16;
+
+    #[allow(clippy::indexing_slicing)]
+    fn index(&self, address: Address) -> &Self::Output {
+        &self.words[address.as_usize()]
+    }
+}
+
+impl IndexMut<Address> for Memory {
+    #[allow(clippy::indexing_slicing)]
+    fn index_mut(&mut self, address: Address) -> &mut Self::Output {
+        &mut self.words[address.as_usize()]
+    }
+}
+
 impl Memory {
     /// Reads the 16-bit word stored at `address`.
     ///
@@ -37,7 +55,7 @@ impl Memory {
     #[must_use]
     #[allow(clippy::indexing_slicing)]
     pub fn read(&self, address: Address) -> u16 {
-        self.words[usize::from(address.as_u16())]
+        self.words[address.as_usize()]
     }
 
     /// Returns the number of addressable memory locations.
@@ -62,10 +80,10 @@ impl From<u16> for Address {
 }
 
 impl Address {
-    /// Returns the address as its underlying 16-bit value.
+    /// Converts the underlying `u16` into a `usize` for indexing.
     #[must_use]
-    pub const fn as_u16(self) -> u16 {
-        self.0
+    pub fn as_usize(self) -> usize {
+        usize::from(self.0)
     }
 
     /// Adds `rhs` to the address using 16-bit wrapping arithmetic.
