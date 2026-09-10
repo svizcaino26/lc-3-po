@@ -8,6 +8,8 @@
 
 use std::ops::RangeInclusive;
 
+use crate::register::Register;
+
 /// bit shift for extacting opcode field from raw `u16` instruction
 const OPCODE_SHIFT: u16 = 12;
 const INSTRUCTION_BITS: u8 = 16;
@@ -16,6 +18,7 @@ const INSTRUCTION_BITS: u8 = 16;
 #[derive(Debug, PartialEq, Eq)]
 pub enum InstructionError {
     InvalidBitRange(RangeInclusive<u8>),
+    InvalidBitConversion,
 }
 
 /// Represent the raw 16-bit instruction.
@@ -50,6 +53,37 @@ impl RawInstruction {
         let mask = (1u16 << len) - 1;
         Ok((self.0 >> shift) & mask)
     }
+
+    /// This is a typed wrapper around [`RawInstruction::bits`]. The target type must
+    /// implement `TryFrom<u16>`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`InstructionError::InvalidBitConversion`] if the extracted value cannot
+    /// be represented by the target type.
+    pub fn bits_as<T: TryFrom<u16>>(
+        &self,
+        range: RangeInclusive<u8>,
+    ) -> Result<T, InstructionError> {
+        self.bits(range)?
+            .try_into()
+            .map_err(|_| InstructionError::InvalidBitConversion)
+    }
+
+    /// Decodes a [`Register`] from an LC-3 16-bit instruction.
+    ///
+    /// The [`Register`] identifier is a 3-bit ecoded value.
+    ///
+    /// # Errors
+    ///
+    /// - If `range.len() != 3`.
+    pub fn decode_register(&self, range: RangeInclusive<u8>) -> Result<Register, InstructionError> {
+        if range.len() != 3 {
+            return Err(InstructionError::InvalidBitRange(range));
+        }
+        let register_id = self.bits_as::<u8>(range)?;
+        Ok(Register::from(register_id))
+    }
 }
 
 /// Represents an LC-3 instruction after decoding its opcode and fields.
@@ -68,6 +102,7 @@ impl DecodedInstruction {
         &self.opcode
     }
 
+    #[must_use]
     pub const fn raw(self) -> RawInstruction {
         self.raw
     }

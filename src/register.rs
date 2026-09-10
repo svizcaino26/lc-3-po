@@ -99,6 +99,23 @@ pub enum Register {
     R7 = 7,
 }
 
+impl From<u8> for Register {
+    #[allow(clippy::unreachable)]
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Self::R0,
+            1 => Self::R1,
+            2 => Self::R2,
+            3 => Self::R3,
+            4 => Self::R4,
+            5 => Self::R5,
+            6 => Self::R6,
+            7 => Self::R7,
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl From<Register> for usize {
     #[allow(clippy::as_conversions)]
     fn from(register: Register) -> Self {
