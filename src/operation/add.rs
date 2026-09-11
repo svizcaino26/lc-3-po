@@ -1,7 +1,6 @@
-use super::{DR_FIELD, IMM5_BIT_COUNT, IMM5_FIELD, MODE_FIELD, SR1_FIELD, SR2_FIELD};
+use super::IMM5_BIT_COUNT;
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
-    operation::{sign_extend, BinaryOpMode, Execute},
+    operation::{sign_extend, BinaryOp, BinaryOpMode, BinaryOperands},
     register::Register,
 };
 
@@ -23,42 +22,24 @@ pub struct AddOp {
     mode: BinaryOpMode,
 }
 
-impl TryFrom<DecodedInstruction> for AddOp {
-    type Error = InstructionError;
-
-    /// Creates an ADD operation [`AddOp`] from a [`DecodedInstruction`]
-    ///
-    /// # Errors
-    ///
-    /// Returns [`InstructionError`] if a bit field cannot be extracted from
-    /// the underlying [`RawInstruction`].
-    #[allow(clippy::unreachable)]
-    fn try_from(instruction: DecodedInstruction) -> Result<Self, Self::Error> {
-        let raw = instruction.raw();
-        let dr = raw.decode_register(DR_FIELD)?;
-        let sr1 = raw.decode_register(SR1_FIELD)?;
-        let mode = match raw.bits(MODE_FIELD)? {
-            0 => BinaryOpMode::Register(raw.decode_register(SR2_FIELD)?),
-            1 => BinaryOpMode::Immediate(raw.bits(IMM5_FIELD)?),
-            _ => unreachable!(),
-        };
-
-        Ok(Self { dr, sr1, mode })
+impl BinaryOp for AddOp {
+    fn from_parts(dr: Register, sr1: Register, mode: BinaryOpMode) -> Self {
+        Self { dr, sr1, mode }
     }
-}
 
-impl Execute for AddOp {
-    fn execute(self, vm: &mut crate::vm::VirtualMachine) {
-        let sr2 = match self.mode {
-            BinaryOpMode::Register(sr2) => vm.read_register(sr2),
-            BinaryOpMode::Immediate(imm5) => sign_extend(imm5, IMM5_BIT_COUNT),
-        };
+    fn operands(self, vm: &crate::vm::VirtualMachine) -> BinaryOperands {
+        BinaryOperands {
+            dr: self.dr,
+            lhs: vm.read_register(self.sr1),
+            rhs: match self.mode {
+                BinaryOpMode::Register(sr2) => vm.read_register(sr2),
+                BinaryOpMode::Immediate(imm5) => sign_extend(imm5, IMM5_BIT_COUNT),
+            },
+        }
+    }
 
-        let result = vm.read_register(self.sr1).wrapping_add(sr2);
-
-        vm.write_register(self.dr, result);
-
-        vm.set_cond(result);
+    fn operate(lhs: u16, rhs: u16) -> u16 {
+        lhs.wrapping_add(rhs)
     }
 }
 
@@ -66,7 +47,10 @@ impl Execute for AddOp {
 mod tests {
     use std::assert_matches;
 
-    use crate::{instruction::RawInstruction, vm::VirtualMachine};
+    use crate::{
+        instruction::{DecodedInstruction, RawInstruction},
+        vm::VirtualMachine,
+    };
 
     use super::*;
 
@@ -74,35 +58,23 @@ mod tests {
     fn create_add_op() {
         let decoded = DecodedInstruction::from(RawInstruction::from(0x1FFF));
 
-        let add_op = AddOp::try_from(decoded);
+        let add_op = AddOp::decode(decoded);
 
         assert!(add_op.is_ok());
     }
 
     #[test]
-    fn sign_extension() {
-        assert_eq!(sign_extend(0b00000, 5), 0x0000);
-        assert_eq!(sign_extend(0b00001, 5), 0x0001);
-        assert_eq!(sign_extend(0b01111, 5), 0x000F);
-        assert_eq!(sign_extend(0b10000, 5), 0xFFF0);
-        assert_eq!(sign_extend(0b10001, 5), 0xFFF1);
-        assert_eq!(sign_extend(0b11111, 5), 0xFFFF);
-    }
-
-    #[test]
+    #[allow(clippy::unwrap_used)]
     fn register_mode_add() {
+        // ADD R2, R3, R4
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x14C4));
         let mut vm = VirtualMachine::default();
         let dr = Register::R2;
 
         vm.write_register(Register::R3, 0x0001);
         vm.write_register(Register::R4, 0x0001);
 
-        let add_op = AddOp {
-            dr,
-            sr1: Register::R3,
-            mode: BinaryOpMode::Register(Register::R4),
-        };
-
+        let add_op = AddOp::decode(decoded).unwrap();
         add_op.execute(&mut vm);
 
         assert_eq!(vm.read_register(dr), 0x0002);
@@ -110,18 +82,16 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn immediate_mode_add() {
+        // ADD R2, R3, #7
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x14FF));
         let mut vm = VirtualMachine::default();
         let dr = Register::R2;
 
         vm.write_register(Register::R3, 0x0001);
 
-        let add_op = AddOp {
-            dr,
-            sr1: Register::R3,
-            mode: BinaryOpMode::Immediate(0b11111),
-        };
-
+        let add_op = AddOp::decode(decoded).unwrap();
         add_op.execute(&mut vm);
 
         assert_eq!(vm.read_register(dr), 0);
@@ -129,18 +99,16 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn immediate_add_negative() {
+        // ADD R2, R3, #-1
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x14FF));
         let mut vm = VirtualMachine::default();
         let dr = Register::R2;
 
         vm.write_register(Register::R3, 0x0005);
 
-        let add_op = AddOp {
-            dr,
-            sr1: Register::R3,
-            mode: BinaryOpMode::Immediate(0b11111),
-        };
-
+        let add_op = AddOp::decode(decoded).unwrap();
         add_op.execute(&mut vm);
 
         assert_eq!(vm.read_register(dr), 0x0004);
@@ -148,18 +116,16 @@ mod tests {
     }
 
     #[test]
-    fn immediate_add_negative_result() {
+    #[allow(clippy::unwrap_used)]
+    fn immediate_add_overflow_to_negative() {
+        // ADD R2, R3, #1
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x14E1));
         let mut vm = VirtualMachine::default();
         let dr = Register::R2;
 
         vm.write_register(Register::R3, 0x7FFF);
 
-        let add_op = AddOp {
-            dr,
-            sr1: Register::R3,
-            mode: BinaryOpMode::Immediate(0b1),
-        };
-
+        let add_op = AddOp::decode(decoded).unwrap();
         add_op.execute(&mut vm);
 
         assert_eq!(vm.read_register(dr), 0x8000);
