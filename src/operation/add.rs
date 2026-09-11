@@ -85,7 +85,7 @@ mod tests {
     #[allow(clippy::unwrap_used)]
     fn immediate_mode_add() {
         // ADD R2, R3, #7
-        let decoded = DecodedInstruction::from(RawInstruction::from(0x14FF));
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x14E7));
         let mut vm = VirtualMachine::default();
         let dr = Register::R2;
 
@@ -94,8 +94,8 @@ mod tests {
         let add_op = AddOp::decode(decoded).unwrap();
         add_op.execute(&mut vm);
 
-        assert_eq!(vm.read_register(dr), 0);
-        assert_matches!(vm.read_cond(), crate::register::ConditionCode::Zro);
+        assert_eq!(vm.read_register(dr), 0x008);
+        assert_matches!(vm.read_cond(), crate::register::ConditionCode::Pos);
     }
 
     #[test]
