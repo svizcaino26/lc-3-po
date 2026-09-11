@@ -1,17 +1,9 @@
-use std::ops::RangeInclusive;
-
+use super::{DR_FIELD, IMM5_BIT_COUNT, IMM5_FIELD, MODE_FIELD, SR1_FIELD, SR2_FIELD};
 use crate::{
     instruction::{DecodedInstruction, InstructionError},
-    operation::Execute,
+    operation::{sign_extend, BinaryOpMode, Execute},
     register::Register,
 };
-
-const DR_FIELD: RangeInclusive<u8> = 5..=7;
-const SR1_FIELD: RangeInclusive<u8> = 8..=10;
-const ADD_MODE_FIELD: RangeInclusive<u8> = 11..=11;
-const SR2_FIELD: RangeInclusive<u8> = 14..=16;
-const IMM5_FIELD: RangeInclusive<u8> = 12..=16;
-const IMM5_BIT_COUNT: u8 = 5;
 
 /// Represents an LC-3 ADD operation.
 ///
@@ -28,7 +20,7 @@ const IMM5_BIT_COUNT: u8 = 5;
 pub struct AddOp {
     dr: Register,
     sr1: Register,
-    mode: AddMode,
+    mode: BinaryOpMode,
 }
 
 impl TryFrom<DecodedInstruction> for AddOp {
@@ -45,9 +37,9 @@ impl TryFrom<DecodedInstruction> for AddOp {
         let raw = instruction.raw();
         let dr = raw.decode_register(DR_FIELD)?;
         let sr1 = raw.decode_register(SR1_FIELD)?;
-        let mode = match raw.bits(ADD_MODE_FIELD)? {
-            0 => AddMode::Register(raw.decode_register(SR2_FIELD)?),
-            1 => AddMode::Immediate(raw.bits(IMM5_FIELD)?),
+        let mode = match raw.bits(MODE_FIELD)? {
+            0 => BinaryOpMode::Register(raw.decode_register(SR2_FIELD)?),
+            1 => BinaryOpMode::Immediate(raw.bits(IMM5_FIELD)?),
             _ => unreachable!(),
         };
 
@@ -58,8 +50,8 @@ impl TryFrom<DecodedInstruction> for AddOp {
 impl Execute for AddOp {
     fn execute(self, vm: &mut crate::vm::VirtualMachine) {
         let sr2 = match self.mode {
-            AddMode::Register(sr2) => vm.read_register(sr2),
-            AddMode::Immediate(imm5) => sign_extend(imm5, IMM5_BIT_COUNT),
+            BinaryOpMode::Register(sr2) => vm.read_register(sr2),
+            BinaryOpMode::Immediate(imm5) => sign_extend(imm5, IMM5_BIT_COUNT),
         };
 
         let result = vm.read_register(self.sr1).wrapping_add(sr2);
@@ -67,42 +59,6 @@ impl Execute for AddOp {
         vm.write_register(self.dr, result);
 
         vm.set_cond(result);
-    }
-}
-
-/// Represents ADD mode based on instruction bit 11.
-///
-/// - 0 = [`AddMode::Register`]
-/// - 1 = [`AddMode::Immediate`]
-#[derive(Debug)]
-enum AddMode {
-    Register(Register),
-    Immediate(u16),
-}
-
-/// Sign-extends an LC-3 value to 16 bits using two's complement representation.
-///
-/// The most significant bit of the value's bit field is used as the sign bit.
-/// If set, the unused upper bits are filled with `1`s; otherwise, they remain
-/// `0`.
-///
-/// # Examples
-///
-/// A 5-bit immediate value of `0b11111` represents `-1` and is sign-extended
-/// to `0xFFFF`.
-///
-/// # Panics
-///
-/// Panics if `bit_count` is `0` or greater than `16`.
-#[allow(clippy::arithmetic_side_effects)]
-const fn sign_extend(value: u16, bit_count: u8) -> u16 {
-    assert!(bit_count > 0 && bit_count <= 16);
-
-    let shift = bit_count - 1;
-    if (value >> shift) & 1 == 1 {
-        value | (0xFFFF << bit_count)
-    } else {
-        value
     }
 }
 
@@ -144,7 +100,7 @@ mod tests {
         let add_op = AddOp {
             dr,
             sr1: Register::R3,
-            mode: AddMode::Register(Register::R4),
+            mode: BinaryOpMode::Register(Register::R4),
         };
 
         add_op.execute(&mut vm);
@@ -163,7 +119,7 @@ mod tests {
         let add_op = AddOp {
             dr,
             sr1: Register::R3,
-            mode: AddMode::Immediate(0b11111),
+            mode: BinaryOpMode::Immediate(0b11111),
         };
 
         add_op.execute(&mut vm);
@@ -182,7 +138,7 @@ mod tests {
         let add_op = AddOp {
             dr,
             sr1: Register::R3,
-            mode: AddMode::Immediate(0b11111),
+            mode: BinaryOpMode::Immediate(0b11111),
         };
 
         add_op.execute(&mut vm);
@@ -201,7 +157,7 @@ mod tests {
         let add_op = AddOp {
             dr,
             sr1: Register::R3,
-            mode: AddMode::Immediate(0b1),
+            mode: BinaryOpMode::Immediate(0b1),
         };
 
         add_op.execute(&mut vm);
