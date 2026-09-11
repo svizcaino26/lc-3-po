@@ -1,8 +1,13 @@
 use std::ops::RangeInclusive;
 
-use crate::{register::Register, vm::VirtualMachine};
+use crate::{
+    instruction::{DecodedInstruction, InstructionError},
+    register::Register,
+    vm::VirtualMachine,
+};
 
 pub mod add;
+pub mod and;
 
 const DR_FIELD: RangeInclusive<u8> = 5..=7;
 const SR1_FIELD: RangeInclusive<u8> = 8..=10;
@@ -17,6 +22,62 @@ const IMM5_BIT_COUNT: u8 = 5;
 /// of the operation.
 pub trait Execute {
     fn execute(self, vm: &mut VirtualMachine);
+}
+
+/// Provides shared decoding and execution logic for LC-3 binary operations.
+///
+/// Binary operations have two source operands and one destination register.
+/// The second operand can either be a register or a sign-extended immediate
+/// value, depending on the operation's mode.
+///
+/// Implementors provide the operation-specific construction, operand
+/// resolution, and computation while the common decoding and execution
+/// logic is provided by this trait.
+trait BinaryOp: Sized {
+    /// Constructs the operation from its decoded operands.
+    fn from_parts(dr: Register, sr1: Register, mode: BinaryOpMode) -> Self;
+
+    /// Decodes the operands of a binary operation from a decoded instruction.
+    ///
+    /// The destination and first source registers are extracted from their
+    /// respective instruction fields. The second operand is decoded as either
+    /// a register or a 5-bit immediate value according to the mode bit.
+    #[allow(clippy::unreachable)]
+    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+        let raw = instruction.raw();
+        let dr = raw.decode_register(DR_FIELD)?;
+        let sr1 = raw.decode_register(SR1_FIELD)?;
+        let mode = match raw.bits(MODE_FIELD)? {
+            0 => BinaryOpMode::Register(raw.decode_register(SR2_FIELD)?),
+            1 => BinaryOpMode::Immediate(raw.bits(IMM5_FIELD)?),
+            _ => unreachable!(),
+        };
+
+        Ok(Self::from_parts(dr, sr1, mode))
+    }
+
+    /// Performs the operation-specific computation on two operands.
+    fn operate(lhs: u16, rhs: u16) -> u16;
+
+    /// Resolves the operation's operands from the virtual machine state.
+    fn operands(self, vm: &VirtualMachine) -> BinaryOperands;
+
+    /// Executes the binary operation and updates the condition code.
+    fn execute(self, vm: &mut VirtualMachine) {
+        let operands = Self::operands(self, vm);
+        let result = Self::operate(operands.lhs, operands.rhs);
+
+        vm.write_register(operands.dr, result);
+
+        vm.set_cond(result);
+    }
+}
+
+/// Contains the resolved operands required to execute a binary operation.
+pub struct BinaryOperands {
+    dr: Register,
+    lhs: u16,
+    rhs: u16,
 }
 
 /// Represents the operation mode based on instruction bit 11.
