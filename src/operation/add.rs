@@ -108,7 +108,9 @@ const fn sign_extend(value: u16, bit_count: u8) -> u16 {
 
 #[cfg(test)]
 mod tests {
-    use crate::instruction::RawInstruction;
+    use std::assert_matches;
+
+    use crate::{instruction::RawInstruction, vm::VirtualMachine};
 
     use super::*;
 
@@ -119,5 +121,92 @@ mod tests {
         let add_op = AddOp::try_from(decoded);
 
         assert!(add_op.is_ok());
+    }
+
+    #[test]
+    fn sign_extension() {
+        assert_eq!(sign_extend(0b00000, 5), 0x0000);
+        assert_eq!(sign_extend(0b00001, 5), 0x0001);
+        assert_eq!(sign_extend(0b01111, 5), 0x000F);
+        assert_eq!(sign_extend(0b10000, 5), 0xFFF0);
+        assert_eq!(sign_extend(0b10001, 5), 0xFFF1);
+        assert_eq!(sign_extend(0b11111, 5), 0xFFFF);
+    }
+
+    #[test]
+    fn register_mode_add() {
+        let mut vm = VirtualMachine::default();
+        let dr = Register::R2;
+
+        vm.write_register(Register::R3, 0x0001);
+        vm.write_register(Register::R4, 0x0001);
+
+        let add_op = AddOp {
+            dr,
+            sr1: Register::R3,
+            mode: AddMode::Register(Register::R4),
+        };
+
+        add_op.execute(&mut vm);
+
+        assert_eq!(vm.read_register(dr), 0x0002);
+        assert_matches!(vm.read_cond(), crate::register::ConditionCode::Pos);
+    }
+
+    #[test]
+    fn immediate_mode_add() {
+        let mut vm = VirtualMachine::default();
+        let dr = Register::R2;
+
+        vm.write_register(Register::R3, 0x0001);
+
+        let add_op = AddOp {
+            dr,
+            sr1: Register::R3,
+            mode: AddMode::Immediate(0b11111),
+        };
+
+        add_op.execute(&mut vm);
+
+        assert_eq!(vm.read_register(dr), 0);
+        assert_matches!(vm.read_cond(), crate::register::ConditionCode::Zro);
+    }
+
+    #[test]
+    fn immediate_add_negative() {
+        let mut vm = VirtualMachine::default();
+        let dr = Register::R2;
+
+        vm.write_register(Register::R3, 0x0005);
+
+        let add_op = AddOp {
+            dr,
+            sr1: Register::R3,
+            mode: AddMode::Immediate(0b11111),
+        };
+
+        add_op.execute(&mut vm);
+
+        assert_eq!(vm.read_register(dr), 0x0004);
+        assert_matches!(vm.read_cond(), crate::register::ConditionCode::Pos);
+    }
+
+    #[test]
+    fn immediate_add_negative_result() {
+        let mut vm = VirtualMachine::default();
+        let dr = Register::R2;
+
+        vm.write_register(Register::R3, 0x7FFF);
+
+        let add_op = AddOp {
+            dr,
+            sr1: Register::R3,
+            mode: AddMode::Immediate(0b1),
+        };
+
+        add_op.execute(&mut vm);
+
+        assert_eq!(vm.read_register(dr), 0x8000);
+        assert_matches!(vm.read_cond(), crate::register::ConditionCode::Neg);
     }
 }
