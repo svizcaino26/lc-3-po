@@ -1,7 +1,11 @@
 use crate::vm::VirtualMachine;
 
-mod add;
+pub mod add;
 
+/// Executes an operation against a virtual machine.
+///
+/// Implementations mutate the virtual machine according to the semantics
+/// of the operation.
 pub trait Execute {
-    fn execute(&mut self, vm: &mut VirtualMachine);
+    fn execute(self, vm: &mut VirtualMachine);
 }
