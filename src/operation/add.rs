@@ -2,7 +2,8 @@ use std::ops::RangeInclusive;
 
 use crate::{
     instruction::{DecodedInstruction, InstructionError},
-    operation::{add::AddMode::Immediate, Execute},
+    operation::Execute,
+    register::Register,
 };
 
 const DR_FIELD: RangeInclusive<u8> = 5..=7;
@@ -10,16 +11,23 @@ const SR1_FIELD: RangeInclusive<u8> = 8..=10;
 const ADD_MODE_FIELD: RangeInclusive<u8> = 11..=11;
 const SR2_FIELD: RangeInclusive<u8> = 14..=16;
 const IMM5_FIELD: RangeInclusive<u8> = 12..=16;
+const IMM5_BIT_COUNT: u8 = 5;
 
-/// Represents an ADD operation.
+/// Represents an LC-3 ADD operation.
 ///
 /// - `dr`: Destination register.
 /// - `sr1`: First source register.
 /// - `mode`: ADD mode [`AddMode::Register`] or [`AddMode::Immediate`]
+///
+/// The operation adds the value in `SR1` to either the value in `SR2` or
+/// a sign-extended 5-bit immediate operand. The result is stored in `DR`,
+/// and the condition code is updated based on the result.
+///
+/// Arithmetic uses 16-bit wrapping semantics.
 #[derive(Debug)]
 pub struct AddOp {
-    dr: usize,
-    sr1: usize,
+    dr: Register,
+    sr1: Register,
     mode: AddMode,
 }
 
@@ -35,10 +43,10 @@ impl TryFrom<DecodedInstruction> for AddOp {
     #[allow(clippy::unreachable)]
     fn try_from(instruction: DecodedInstruction) -> Result<Self, Self::Error> {
         let raw = instruction.raw();
-        let dr = usize::from(raw.bits(DR_FIELD)?);
-        let sr1 = usize::from(raw.bits(SR1_FIELD)?);
+        let dr = raw.decode_register(DR_FIELD)?;
+        let sr1 = raw.decode_register(SR1_FIELD)?;
         let mode = match raw.bits(ADD_MODE_FIELD)? {
-            0 => AddMode::Register(usize::from(raw.bits(SR2_FIELD)?)),
+            0 => AddMode::Register(raw.decode_register(SR2_FIELD)?),
             1 => AddMode::Immediate(raw.bits(IMM5_FIELD)?),
             _ => unreachable!(),
         };
@@ -48,8 +56,17 @@ impl TryFrom<DecodedInstruction> for AddOp {
 }
 
 impl Execute for AddOp {
-    fn execute(&mut self, vm: &mut crate::vm::VirtualMachine) {
-        todo!()
+    fn execute(self, vm: &mut crate::vm::VirtualMachine) {
+        let sr2 = match self.mode {
+            AddMode::Register(sr2) => vm.read_register(sr2),
+            AddMode::Immediate(imm5) => sign_extend(imm5, IMM5_BIT_COUNT),
+        };
+
+        let result = vm.read_register(self.sr1).wrapping_add(sr2);
+
+        vm.write_register(self.dr, result);
+
+        vm.set_cond(result);
     }
 }
 
@@ -59,7 +76,7 @@ impl Execute for AddOp {
 /// - 1 = [`AddMode::Immediate`]
 #[derive(Debug)]
 enum AddMode {
-    Register(usize),
+    Register(Register),
     Immediate(u16),
 }
 
