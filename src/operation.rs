@@ -8,6 +8,7 @@ use crate::{
 
 pub mod add;
 pub mod and;
+pub mod not;
 
 const DR_FIELD: RangeInclusive<u8> = 5..=7;
 const SR1_FIELD: RangeInclusive<u8> = 8..=10;
