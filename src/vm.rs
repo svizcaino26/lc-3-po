@@ -1,4 +1,5 @@
 use crate::instruction::{DecodedInstruction, Opcode, RawInstruction};
+use crate::register::{ConditionCode, Register};
 use crate::{memory::Memory, register::Registers};
 
 /// Represents an LC-3 virtual machine.
@@ -24,6 +25,29 @@ impl VirtualMachine {
         let raw = self.memory[self.registers.pc()];
         self.registers.advance_pc();
         RawInstruction::from(raw)
+    }
+
+    /// Returns the value stored at the specified genearl purpose register.
+    #[must_use]
+    pub fn read_register(&self, register: Register) -> u16 {
+        self.registers[register]
+    }
+
+    /// Writes a value to the specified general purpose register.
+    pub fn write_register(&mut self, register: Register, value: u16) {
+        self.registers[register] = value;
+    }
+
+    /// Sets the `COND` register to a [`ConditionCode`] based on the
+    /// last operation result value.
+    pub const fn set_cond(&mut self, op_result: u16) {
+        self.registers.set_cond(op_result);
+    }
+
+    /// Returns the [`ConditionCode`] stored in the `COND` register.
+    #[must_use]
+    pub const fn read_cond(&self) -> ConditionCode {
+        self.registers.cond()
     }
 
     /// Decodes a raw LC-3 instruction into its corresponding instruction
