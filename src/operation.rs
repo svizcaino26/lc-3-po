@@ -25,6 +25,43 @@ pub trait Execute {
     fn execute(self, vm: &mut VirtualMachine);
 }
 
+pub trait UnaryOp: Sized {
+    /// Constructs the operation from its decoded operands.
+    fn from_parts(dr: Register, sr: Register) -> Self;
+
+    /// Decodes the operands of a unary operation from a decoded instruction.
+    ///
+    /// The destination and source registers are extracted from their respective fields.
+    /// The requested bit fields must be in the range `1..=16`
+    ///
+    /// # Errors
+    /// - If an invalid bit range in requested.
+    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+        let raw = instruction.raw();
+        let dr = Register::from(raw.bits_as::<u8>(DR_FIELD)?);
+        let sr = Register::from(raw.bits_as::<u8>(SR1_FIELD)?);
+
+        Ok(Self::from_parts(dr, sr))
+    }
+
+    /// Resolves the operation's operands from the virtual machine state.
+    fn operands(self, vm: &VirtualMachine) -> UnaryOperands;
+
+    /// Performs the operation-specific computation.
+    fn operate(value: u16) -> u16;
+
+    /// Executes the unary operation and updates the condition code.
+    fn execute(self, vm: &mut VirtualMachine) {
+        let operands = Self::operands(self, vm);
+
+        let result = Self::operate(operands.value);
+
+        vm.write_register(operands.dr, result);
+
+        vm.set_cond(result);
+    }
+}
+
 /// Provides shared decoding and execution logic for LC-3 binary operations.
 ///
 /// Binary operations have two source operands and one destination register.
@@ -34,7 +71,7 @@ pub trait Execute {
 /// Implementors provide the operation-specific construction, operand
 /// resolution, and computation while the common decoding and execution
 /// logic is provided by this trait.
-trait BinaryOp: Sized {
+pub trait BinaryOp: Sized {
     /// Constructs the operation from its decoded operands.
     fn from_parts(dr: Register, sr1: Register, mode: BinaryOpMode) -> Self;
 
@@ -43,6 +80,11 @@ trait BinaryOp: Sized {
     /// The destination and first source registers are extracted from their
     /// respective instruction fields. The second operand is decoded as either
     /// a register or a 5-bit immediate value according to the mode bit.
+    ///
+    /// The requested bit fields must be in the range `1..=16`
+    ///
+    /// # Errors
+    /// - If an invalid bit range in requested.
     #[allow(clippy::unreachable)]
     fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
         let raw = instruction.raw();
@@ -79,6 +121,12 @@ pub struct BinaryOperands {
     dr: Register,
     lhs: u16,
     rhs: u16,
+}
+
+/// Contains the resolved operands required to execute a unary operation.
+pub struct UnaryOperands {
+    dr: Register,
+    value: u16,
 }
 
 /// Represents the operation mode based on instruction bit 11.
