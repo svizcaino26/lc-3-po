@@ -17,14 +17,6 @@ const SR2_FIELD: RangeInclusive<u8> = 14..=16;
 const IMM5_FIELD: RangeInclusive<u8> = 12..=16;
 const IMM5_BIT_COUNT: u8 = 5;
 
-/// Executes an operation against a virtual machine.
-///
-/// Implementations mutate the virtual machine according to the semantics
-/// of the operation.
-pub trait Execute {
-    fn execute(self, vm: &mut VirtualMachine);
-}
-
 pub trait UnaryOp: Sized {
     /// Constructs the operation from its decoded operands.
     fn from_parts(dr: Register, sr: Register) -> Self;
@@ -134,7 +126,7 @@ pub struct UnaryOperands {
 /// - 0 = [`BinaryOpMod::Register`]
 /// - 1 = [`BinaryOpMode::Immediate`]
 #[derive(Debug)]
-enum BinaryOpMode {
+pub enum BinaryOpMode {
     Register(Register),
     Immediate(u16),
 }
