@@ -1,8 +1,7 @@
-use super::{DR_FIELD, SR1_FIELD};
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
-    operation::Execute,
+    operation::{UnaryOp, UnaryOperands},
     register::Register,
+    vm::VirtualMachine,
 };
 
 /// Represents an LC-3 NOT operation.
@@ -18,41 +17,30 @@ pub struct NotOp {
     sr: Register,
 }
 
-impl TryFrom<DecodedInstruction> for NotOp {
-    type Error = InstructionError;
-
-    fn try_from(instruction: DecodedInstruction) -> Result<Self, Self::Error> {
-        let raw = instruction.raw();
-        let dr = Register::from(raw.bits_as::<u8>(DR_FIELD)?);
-        let sr = Register::from(raw.bits_as::<u8>(SR1_FIELD)?);
-
-        Ok(Self { dr, sr })
+impl UnaryOp for NotOp {
+    fn from_parts(dr: Register, sr: Register) -> Self {
+        Self { dr, sr }
     }
-}
 
-impl NotOp {
-    /// Decode a `NOT` operation from an LC-3 instruction.
-    ///
-    /// # Errors
-    /// - If there's an invalid bit range in the underlying instruction bits.
-    pub fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
-        Self::try_from(instruction)
+    fn operands(self, vm: &VirtualMachine) -> UnaryOperands {
+        UnaryOperands {
+            dr: self.dr,
+            value: vm.read_register(self.sr),
+        }
     }
-}
 
-impl Execute for NotOp {
-    fn execute(self, vm: &mut crate::vm::VirtualMachine) {
-        let result = !vm.read_register(self.sr);
-
-        vm.write_register(self.dr, result);
-
-        vm.set_cond(result);
+    fn operate(value: u16) -> u16 {
+        !value
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{instruction::RawInstruction, register::ConditionCode, vm::VirtualMachine};
+    use crate::{
+        instruction::{DecodedInstruction, RawInstruction},
+        register::ConditionCode,
+        vm::VirtualMachine,
+    };
 
     use super::*;
 
