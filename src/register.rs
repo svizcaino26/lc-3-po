@@ -69,6 +69,20 @@ impl Registers {
     pub const fn set_pc(&mut self, address: Address) {
         self.pc = address;
     }
+
+    /// Sets the [`ConditionCode`] in the `COND` register based on the result
+    /// of the last operation.
+    ///
+    /// LC-3 uses two's complement representation and wrapping unsigned arithmetic operations.
+    pub const fn set_cond(&mut self, op_result: u16) {
+        if op_result == 0 {
+            self.cond = ConditionCode::Zro;
+        } else if op_result >> 15 == 1 {
+            self.cond = ConditionCode::Neg;
+        } else {
+            self.cond = ConditionCode::Pos;
+        }
+    }
 }
 
 /// Represents the LC-3 condition code.
@@ -97,6 +111,23 @@ pub enum Register {
     R5 = 5,
     R6 = 6,
     R7 = 7,
+}
+
+impl From<u8> for Register {
+    #[allow(clippy::unreachable)]
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Self::R0,
+            1 => Self::R1,
+            2 => Self::R2,
+            3 => Self::R3,
+            4 => Self::R4,
+            5 => Self::R5,
+            6 => Self::R6,
+            7 => Self::R7,
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl From<Register> for usize {
