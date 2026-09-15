@@ -30,3 +30,80 @@ impl MemoryLoadOp for LdOp {
             offset: self.offset,
         }
     }
+
+    fn operate(offset: Offset, vm: &VirtualMachine) -> u16 {
+        let sext_offset = sign_extend(offset.value(), OFFSET_9_BIT_COUNT);
+        let address = vm.read_pc().wrapping_add(sext_offset);
+        vm.read_memory(address)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        instruction::{DecodedInstruction, RawInstruction},
+        register::ConditionCode,
+    };
+
+    use super::*;
+
+    #[test]
+    fn create_ld_op() {
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x2FFF));
+
+        let ld_op = LdOp::decode(decoded);
+
+        assert!(ld_op.is_ok());
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn execute_ld_op() {
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x2801));
+        let mut vm = VirtualMachine::default();
+        let dr = Register::R4;
+
+        vm.write_memory(vm.read_pc().wrapping_add(0x0001), 0x0001);
+
+        let ld_op = LdOp::decode(decoded).unwrap();
+
+        ld_op.execute(&mut vm);
+
+        assert_eq!(vm.read_register(dr), 0x0001);
+        assert_eq!(vm.read_cond(), ConditionCode::Pos);
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn execute_ld_op_zero() {
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x2801));
+        let mut vm = VirtualMachine::default();
+        let dr = Register::R4;
+
+        vm.write_memory(vm.read_pc().wrapping_add(0x0001), 0x0000);
+
+        let ld_op = LdOp::decode(decoded).unwrap();
+
+        ld_op.execute(&mut vm);
+
+        assert_eq!(vm.read_register(dr), 0x0000);
+        assert_eq!(vm.read_cond(), ConditionCode::Zro);
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn execute_ld_op_negative() {
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x2801));
+        let mut vm = VirtualMachine::default();
+        let dr = Register::R4;
+
+        vm.write_memory(vm.read_pc().wrapping_add(0x0001), 0xFFFF);
+
+        let ld_op = LdOp::decode(decoded).unwrap();
+
+        ld_op.execute(&mut vm);
+
+        assert_eq!(vm.read_register(dr), 0xFFFF);
+        assert_eq!(vm.read_cond(), ConditionCode::Neg);
+    }
+}
