@@ -192,6 +192,26 @@ pub enum Offset {
     Offset6 { base_r: Register, value: u16 },
 }
 
+impl Offset {
+    /// Returns the extracted offset numeric value.
+    #[must_use]
+    pub const fn value(&self) -> u16 {
+        match self {
+            Self::Offset9(value) | Self::Offset6 { value, .. } => *value,
+        }
+    }
+
+    /// Returns the decoded base [`Register`] on a paired register-offset variant.
+    #[must_use]
+    pub const fn base_r(&self) -> Option<Register> {
+        if let Self::Offset6 { base_r, .. } = self {
+            Some(*base_r)
+        } else {
+            None
+        }
+    }
+}
+
 /// Sign-extends an LC-3 value to 16 bits using two's complement representation.
 ///
 /// The most significant bit of the value's bit field is used as the sign bit.
