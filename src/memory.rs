@@ -58,6 +58,11 @@ impl Memory {
         self.words[address.as_usize()]
     }
 
+    #[allow(clippy::indexing_slicing)]
+    pub fn write(&mut self, address: Address, value: u16) {
+        self.words[address.as_usize()] = value;
+    }
+
     /// Returns the number of addressable memory locations.
     #[must_use]
     #[allow(clippy::len_without_is_empty)]
