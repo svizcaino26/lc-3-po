@@ -10,12 +10,17 @@ pub mod add;
 pub mod and;
 pub mod not;
 
+pub mod ld;
+
 const DR_FIELD: RangeInclusive<u8> = 5..=7;
 const SR1_FIELD: RangeInclusive<u8> = 8..=10;
 const MODE_FIELD: RangeInclusive<u8> = 11..=11;
 const SR2_FIELD: RangeInclusive<u8> = 14..=16;
 const IMM5_FIELD: RangeInclusive<u8> = 12..=16;
 const IMM5_BIT_COUNT: u8 = 5;
+const OFFSET_9_BIT_COUNT: u8 = 9;
+const OFFSET_6_BIT_COUNT: u8 = 6;
+const PC_OFFSET_9_FIELD: RangeInclusive<u8> = 8..=16;
 
 pub trait UnaryOp: Sized {
     /// Constructs the operation from its decoded operands.
@@ -124,7 +129,10 @@ pub trait MemoryLoadOp: Sized {
     fn from_parts(dr: Register, offset: Offset) -> Self;
 
     /// Decodes the [`Offset`] value from an LC-3 instruction.
-    fn offset(instruction: &DecodedInstruction) -> Offset;
+    ///
+    /// # Errors
+    /// - If an invalid bit range in requested.
+    fn offset(instruction: &DecodedInstruction) -> Result<Offset, InstructionError>;
 
     /// Decodes the operands of a memory load operation from a decoded instruction.
     ///
@@ -133,18 +141,18 @@ pub trait MemoryLoadOp: Sized {
     /// # Errors
     /// - If an invalid bit range in requested.
     fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
-        let offset = Self::offset(&instruction);
+        let offset = Self::offset(&instruction)?;
         let raw = instruction.raw();
         let dr = raw.decode_register(DR_FIELD)?;
         Ok(Self::from_parts(dr, offset))
     }
 
-    fn operands(self, vm: &VirtualMachine) -> MemoryLoadOperands;
+    fn operands(self) -> MemoryLoadOperands;
 
     fn operate(offset: Offset, vm: &VirtualMachine) -> u16;
 
     fn execute(self, vm: &mut VirtualMachine) {
-        let operands = Self::operands(self, vm);
+        let operands = Self::operands(self);
         let result = Self::operate(operands.offset, vm);
 
         vm.write_register(operands.dr, result);
