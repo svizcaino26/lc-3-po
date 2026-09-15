@@ -11,6 +11,7 @@ pub mod and;
 pub mod not;
 
 pub mod ld;
+pub mod ldi;
 
 const DR_FIELD: RangeInclusive<u8> = 5..=7;
 const SR1_FIELD: RangeInclusive<u8> = 8..=10;
