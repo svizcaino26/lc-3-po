@@ -8,6 +8,10 @@ use crate::{
     vm::VirtualMachine,
 };
 
+/// Implements the LC-3 Load (LD) operation.
+///
+/// Loads a value from memory into the destination register using a
+/// PC-relative address calculated from the instruction's 9-bit offset.
 pub struct LdOp {
     dr: Register,
     offset: Offset,
@@ -31,6 +35,8 @@ impl MemoryLoadOp for LdOp {
         }
     }
 
+    /// Reads the value at the address obtained by adding the sign-extended
+    /// offset to the incremented program counter.
     fn operate(offset: Offset, vm: &VirtualMachine) -> u16 {
         let sext_offset = sign_extend(offset.value(), OFFSET_9_BIT_COUNT);
         let address = vm.read_pc().wrapping_add(sext_offset);
