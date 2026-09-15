@@ -108,6 +108,51 @@ pub trait BinaryOp: Sized {
     }
 }
 
+/// Provides shared decoding and execution logic for LC-3 memory load operations.
+///
+/// Memory load operations have one destination [`Register`] and an [`Offset`].
+///
+/// The [`Offset`] can either be an immediate 9-bit encoded value or
+/// a [`Register`] and an immediate 6-bit encoded value. Both cases
+/// require the immediate value to be sign-extended to compute a memory address.
+///
+/// Implementors provide the operation-specific construction, operand
+/// resolution, and computation while the common decoding and execution
+/// logic is provided by this trait.
+pub trait MemoryLoadOp: Sized {
+    /// Construct the operation from extracted instruction data.
+    fn from_parts(dr: Register, offset: Offset) -> Self;
+
+    /// Decodes the [`Offset`] value from an LC-3 instruction.
+    fn offset(instruction: &DecodedInstruction) -> Offset;
+
+    /// Decodes the operands of a memory load operation from a decoded instruction.
+    ///
+    /// The requested bit fields must be in the range `1..=16`
+    ///
+    /// # Errors
+    /// - If an invalid bit range in requested.
+    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+        let offset = Self::offset(&instruction);
+        let raw = instruction.raw();
+        let dr = raw.decode_register(DR_FIELD)?;
+        Ok(Self::from_parts(dr, offset))
+    }
+
+    fn operands(self, vm: &VirtualMachine) -> MemoryLoadOperands;
+
+    fn operate(offset: Offset, vm: &VirtualMachine) -> u16;
+
+    fn execute(self, vm: &mut VirtualMachine) {
+        let operands = Self::operands(self, vm);
+        let result = Self::operate(operands.offset, vm);
+
+        vm.write_register(operands.dr, result);
+
+        vm.set_cond(result);
+    }
+}
+
 /// Contains the resolved operands required to execute a binary operation.
 pub struct BinaryOperands {
     dr: Register,
@@ -121,6 +166,12 @@ pub struct UnaryOperands {
     value: u16,
 }
 
+/// Contains the resolved operands required for a memory load operation.
+pub struct MemoryLoadOperands {
+    dr: Register,
+    offset: Offset,
+}
+
 /// Represents the operation mode based on instruction bit 11.
 ///
 /// - 0 = [`BinaryOpMod::Register`]
@@ -129,6 +180,16 @@ pub struct UnaryOperands {
 pub enum BinaryOpMode {
     Register(Register),
     Immediate(u16),
+}
+
+/// Represents a memory operation addressing mode.
+///
+/// - [`Offset::Offset9`] represents an immediate 9-bit encoded value.
+/// - [`Offset::Offset6`] represents a paired [`Register`] - immediate 6-bit encoded value.
+#[derive(Debug)]
+pub enum Offset {
+    Offset9(u16),
+    Offset6 { base_r: Register, value: u16 },
 }
 
 /// Sign-extends an LC-3 value to 16 bits using two's complement representation.
