@@ -84,6 +84,12 @@ impl From<u16> for Address {
     }
 }
 
+impl From<Address> for u16 {
+    fn from(address: Address) -> Self {
+        address.0
+    }
+}
+
 impl Address {
     /// Converts the underlying `u16` into a `usize` for indexing.
     #[must_use]
