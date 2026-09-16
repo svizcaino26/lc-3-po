@@ -2,6 +2,7 @@ use std::ops::RangeInclusive;
 
 use crate::{
     instruction::{DecodedInstruction, InstructionError},
+    memory::Address,
     register::Register,
     vm::VirtualMachine,
 };
@@ -14,6 +15,10 @@ pub mod ld;
 pub mod ldi;
 pub mod ldr;
 pub mod lea;
+
+pub mod st;
+pub mod sti;
+pub mod str;
 
 const DR_FIELD: RangeInclusive<u8> = 5..=7;
 const MEM_OP_REG_FIELD: RangeInclusive<u8> = 5..=7;
@@ -170,19 +175,33 @@ pub trait MemoryOp: Sized {
 /// while this trait provides the common execution logic.
 pub trait MemoryLoadOp: Sized + MemoryOp {
     /// Resolves the operation's operands from the constructed operation.
-    fn operands(self) -> MemoryLoadOperands<Self::Offset>;
+    fn operands(self) -> MemoryOperands<Self::Offset>;
 
     /// Performs the operation-specific computation.
     fn operate(offset: Self::Offset, vm: &VirtualMachine) -> u16;
 
     /// Executes the memory load operation and updates the condition code.
     fn execute_load(self, vm: &mut VirtualMachine) {
-        let operands: MemoryLoadOperands<Self::Offset> = Self::operands(self);
+        let operands: MemoryOperands<Self::Offset> = Self::operands(self);
         let result = Self::operate(operands.offset, vm);
 
-        vm.write_register(operands.dr, result);
+        vm.write_register(operands.register, result);
 
         vm.set_cond(result);
+    }
+}
+
+pub trait MemoryStoreOp: MemoryOp {
+    fn operands(self) -> MemoryOperands<Self::Offset>;
+
+    fn compute_address(offset: Self::Offset, vm: &VirtualMachine) -> Address;
+
+    fn execute_store(self, vm: &mut VirtualMachine) {
+        let operands: MemoryOperands<Self::Offset> = Self::operands(self);
+
+        let address = Self::compute_address(operands.offset, vm);
+
+        vm.write_memory(address, vm.read_register(operands.register));
     }
 }
 
@@ -200,8 +219,8 @@ pub struct UnaryOperands {
 }
 
 /// Contains the resolved operands required for a memory load operation.
-pub struct MemoryLoadOperands<T: MemoryOffset> {
-    dr: Register,
+pub struct MemoryOperands<T: MemoryOffset> {
+    register: Register,
     offset: T,
 }
 
