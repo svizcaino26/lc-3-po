@@ -12,6 +12,7 @@ pub mod not;
 
 pub mod ld;
 pub mod ldi;
+pub mod ldr;
 
 const DR_FIELD: RangeInclusive<u8> = 5..=7;
 const SR1_FIELD: RangeInclusive<u8> = 8..=10;
@@ -22,6 +23,7 @@ const IMM5_BIT_COUNT: u8 = 5;
 const OFFSET_9_BIT_COUNT: u8 = 9;
 const OFFSET_6_BIT_COUNT: u8 = 6;
 const PC_OFFSET_9_FIELD: RangeInclusive<u8> = 8..=16;
+const OFFSET_6_FIELD: RangeInclusive<u8> = 11..=16;
 
 pub trait UnaryOp: Sized {
     /// Constructs the operation from its decoded operands.
