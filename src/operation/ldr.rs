@@ -51,3 +51,50 @@ impl MemoryLoadOp for LdrOp {
         vm.read_memory(address)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::vm::VirtualMachine;
+
+    use super::*;
+
+    #[test]
+    fn ldr_reads_from_base_register_plus_positive_offset() {
+        let mut vm = VirtualMachine::default();
+
+        vm.write_register(Register::R1, 0x3000);
+        vm.write_memory(Address::from(0x3002), 0x1234);
+
+        let op = LdrOp {
+            dr: Register::R0,
+            offset: Offset6 {
+                base_r: Register::R1,
+                value: 0b00_0010,
+            },
+        };
+
+        op.execute(&mut vm);
+
+        assert_eq!(vm.read_register(Register::R0), 0x1234);
+    }
+
+    #[test]
+    fn ldr_reads_from_base_register_plus_negative_offset() {
+        let mut vm = VirtualMachine::default();
+
+        vm.write_register(Register::R1, 0x3002);
+        vm.write_memory(Address::from(0x3000), 0x5678);
+
+        let op = LdrOp {
+            dr: Register::R0,
+            offset: Offset6 {
+                base_r: Register::R1,
+                value: 0b11_1110, // -2
+            },
+        };
+
+        op.execute(&mut vm);
+
+        assert_eq!(vm.read_register(Register::R0), 0x5678);
+    }
+}
