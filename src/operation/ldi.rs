@@ -2,7 +2,7 @@ use crate::{
     instruction::{DecodedInstruction, InstructionError},
     memory::Address,
     operation::{
-        sign_extend, MemoryLoadOp, MemoryLoadOperands, Offset9, OFFSET_9_BIT_COUNT,
+        sign_extend, MemoryLoadOp, MemoryLoadOperands, MemoryOp, Offset9, OFFSET_9_BIT_COUNT,
         PC_OFFSET_9_FIELD,
     },
     register::Register,
@@ -20,17 +20,37 @@ pub struct LdiOp {
     offset: Offset9,
 }
 
-impl MemoryLoadOp for LdiOp {
+impl MemoryOp for LdiOp {
     type Offset = Offset9;
 
-    fn from_parts(dr: Register, offset: Self::Offset) -> Self {
-        Self { dr, offset }
+    fn from_parts(register: Register, offset: Self::Offset) -> Self {
+        Self {
+            dr: register,
+            offset,
+        }
     }
 
     fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError> {
         let offset = instruction.raw().bits(PC_OFFSET_9_FIELD)?;
         Ok(Offset9(offset))
     }
+
+    fn execute(self, vm: &mut VirtualMachine) {
+        self.execute_load(vm);
+    }
+}
+
+impl MemoryLoadOp for LdiOp {
+    // type Offset = Offset9;
+
+    // fn from_parts(dr: Register, offset: Self::Offset) -> Self {
+    //     Self { dr, offset }
+    // }
+
+    // fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError> {
+    //     let offset = instruction.raw().bits(PC_OFFSET_9_FIELD)?;
+    //     Ok(Offset9(offset))
+    // }
 
     fn operands(self) -> MemoryLoadOperands<Self::Offset> {
         MemoryLoadOperands {

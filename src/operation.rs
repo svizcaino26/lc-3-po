@@ -13,8 +13,10 @@ pub mod not;
 pub mod ld;
 pub mod ldi;
 pub mod ldr;
+pub mod lea;
 
 const DR_FIELD: RangeInclusive<u8> = 5..=7;
+const MEM_OP_REG_FIELD: RangeInclusive<u8> = 5..=7;
 const SR1_FIELD: RangeInclusive<u8> = 8..=10;
 const MODE_FIELD: RangeInclusive<u8> = 11..=11;
 const SR2_FIELD: RangeInclusive<u8> = 14..=16;
@@ -116,21 +118,20 @@ pub trait BinaryOp: Sized {
     }
 }
 
-/// Provides shared decoding and execution logic for LC-3 memory load operations.
+/// Provides shared decoding logic for LC-3 memory operations.
 ///
-/// Memory load operations have one destination [`Register`] and an operation-specific
+/// Memory operations have one [`Register`] and an operation-specific
 /// [`MemoryOffset`]. The offset representation is selected by each implementation
 /// through the [`Self::Offset`] associated type.
 ///
-/// Implementors provide the operation-specific construction, operand
-/// resolution, and computation while the common decoding and execution
-/// logic is provided by this trait.
-pub trait MemoryLoadOp: Sized {
-    /// The offset representation used by this memory load operation.
+/// Implementors provide the operation-specific offset decoding and execution,
+/// while this trait provides the common instruction decoding logic.
+pub trait MemoryOp: Sized {
+    /// The offset representation used by this memory operation.
     type Offset: MemoryOffset;
 
-    /// Construct the operation from it's decoded parts.
-    fn from_parts(dr: Register, offset: Self::Offset) -> Self;
+    /// Construct the operation from its decoded parts.
+    fn from_parts(register: Register, offset: Self::Offset) -> Self;
 
     /// Decodes the operation's offset from an LC-3 instruction.
     ///
@@ -140,13 +141,10 @@ pub trait MemoryLoadOp: Sized {
     /// decoding the offset.
     fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError>;
 
-    /// Decodes a memory load operation from a decoded instruction.
+    /// Decodes a memory operation from a decoded instruction.
     ///
-    /// The destination register is extracted from the [`DR_FIELD`] instruction
-    /// field, while the offset is decoded using the implementation's
-    /// [`Self::Offset`] type.
-    ///
-    /// The requested bit fields must be in the range `1..=16`
+    /// The register is extracted from the [`MEM_OP_REG_FIELD`] instruction field,
+    /// while the offset is decoded using the implementation's [`Self::Offset`] type.
     ///
     /// # Errors
     ///
@@ -154,19 +152,31 @@ pub trait MemoryLoadOp: Sized {
     /// decoding the instruction.
     fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
         let offset: Self::Offset = Self::offset(&instruction)?;
-        let raw = instruction.raw();
-        let dr = raw.decode_register(DR_FIELD)?;
-        Ok(Self::from_parts(dr, offset))
+        let register = instruction.raw().decode_register(MEM_OP_REG_FIELD)?;
+        Ok(Self::from_parts(register, offset))
     }
 
-    /// Resolves the operation's operands from the construced operation.
+    /// Executes the memory operation.
+    fn execute(self, vm: &mut VirtualMachine);
+}
+
+/// Provides shared execution logic for LC-3 memory load operations.
+///
+/// Memory load operations have one destination [`Register`] and an operation-specific
+/// [`MemoryOffset`]. The offset representation is selected by each implementation
+/// through the [`Self::Offset`] associated type defined by the [`MemoryOp`] supertrait.
+///
+/// Implementors provide operation-specific operand resolution and computation,
+/// while this trait provides the common execution logic.
+pub trait MemoryLoadOp: Sized + MemoryOp {
+    /// Resolves the operation's operands from the constructed operation.
     fn operands(self) -> MemoryLoadOperands<Self::Offset>;
 
     /// Performs the operation-specific computation.
     fn operate(offset: Self::Offset, vm: &VirtualMachine) -> u16;
 
     /// Executes the memory load operation and updates the condition code.
-    fn execute(self, vm: &mut VirtualMachine) {
+    fn execute_load(self, vm: &mut VirtualMachine) {
         let operands: MemoryLoadOperands<Self::Offset> = Self::operands(self);
         let result = Self::operate(operands.offset, vm);
 
