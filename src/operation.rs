@@ -191,11 +191,26 @@ pub trait MemoryLoadOp: Sized + MemoryOp {
     }
 }
 
+/// Provides shared execution logic for LC-3 memory store operations.
+///
+/// Memory store operations have one source [`Register`] and an
+/// operation-specific [`MemoryOffset`]. The offset representation is selected
+/// by each implementation through the [`MemoryOp::Offset`] associated type.
+///
+/// Implementors provide operation-specific operand resolution and address
+/// computation, while this trait provides the common execution logic for
+/// writing the source register's value to memory.
 pub trait MemoryStoreOp: MemoryOp {
+    /// Resolves the operation's operands from the constructed operation.
     fn operands(self) -> MemoryOperands<Self::Offset>;
 
+    /// Computes the memory address targeted by the store operation.
     fn compute_address(offset: Self::Offset, vm: &VirtualMachine) -> Address;
 
+    /// Executes the memory store operation.
+    ///
+    /// The source register's value is written to the address computed by
+    /// [`Self::compute_address`].
     fn execute_store(self, vm: &mut VirtualMachine) {
         let operands: MemoryOperands<Self::Offset> = Self::operands(self);
 
