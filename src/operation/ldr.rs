@@ -2,7 +2,7 @@ use crate::{
     instruction::{DecodedInstruction, InstructionError},
     memory::Address,
     operation::{
-        sign_extend, MemoryLoadOp, MemoryLoadOperands, MemoryOp, Offset6, OFFSET_6_BIT_COUNT,
+        sign_extend, MemoryLoadOp, MemoryOp, MemoryOperands, Offset6, OFFSET_6_BIT_COUNT,
         OFFSET_6_FIELD, SR1_FIELD,
     },
     register::Register,
@@ -44,25 +44,9 @@ impl MemoryOp for LdrOp {
 }
 
 impl MemoryLoadOp for LdrOp {
-    // type Offset = Offset6;
-
-    // fn from_parts(dr: Register, offset: Self::Offset) -> Self {
-    //     Self { dr, offset }
-    // }
-
-    // fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError> {
-    //     let offset = instruction.raw().bits(OFFSET_6_FIELD)?;
-    //     let base_r = instruction.raw().decode_register(SR1_FIELD)?;
-
-    //     Ok(Offset6 {
-    //         base_r,
-    //         value: offset,
-    //     })
-    // }
-
-    fn operands(self) -> MemoryLoadOperands<Self::Offset> {
-        MemoryLoadOperands {
-            dr: self.dr,
+    fn operands(self) -> MemoryOperands<Self::Offset> {
+        MemoryOperands {
+            register: self.dr,
             offset: self.offset,
         }
     }

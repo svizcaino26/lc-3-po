@@ -1,7 +1,7 @@
 use crate::{
     instruction::{DecodedInstruction, InstructionError},
     operation::{
-        sign_extend, MemoryLoadOp, MemoryLoadOperands, MemoryOp, Offset9, OFFSET_9_BIT_COUNT,
+        sign_extend, MemoryLoadOp, MemoryOp, MemoryOperands, Offset9, OFFSET_9_BIT_COUNT,
         PC_OFFSET_9_FIELD,
     },
     register::Register,
@@ -37,21 +37,9 @@ impl MemoryOp for LdOp {
     }
 }
 impl MemoryLoadOp for LdOp {
-    // type Offset = Offset9;
-
-    // fn from_parts(dr: Register, offset: Self::Offset) -> Self {
-    //     Self { dr, offset }
-    // }
-
-    // fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError> {
-    //     let raw = instruction.raw();
-    //     let offset = raw.bits(PC_OFFSET_9_FIELD)?;
-    //     Ok(Offset9(offset))
-    // }
-
-    fn operands(self) -> MemoryLoadOperands<Self::Offset> {
-        MemoryLoadOperands {
-            dr: self.dr,
+    fn operands(self) -> MemoryOperands<Self::Offset> {
+        MemoryOperands {
+            register: self.dr,
             offset: self.offset,
         }
     }
