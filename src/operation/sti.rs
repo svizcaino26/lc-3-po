@@ -9,6 +9,12 @@ use crate::{
     vm::VirtualMachine,
 };
 
+/// Stores the value of a register at an address obtained indirectly through
+/// a PC-relative address.
+///
+/// The address of the indirect pointer is calculated by sign-extending the
+/// encoded 9-bit offset and adding it to the current program counter. The
+/// value read from that address is then used as the target memory address.
 pub struct StiOp {
     sr: Register,
     offset: Offset9,
@@ -46,5 +52,32 @@ impl MemoryStoreOp for StiOp {
         let sext_offset = sign_extend(offset.value(), OFFSET_9_BIT_COUNT);
         let address_indirect = vm.read_pc().wrapping_add(sext_offset);
         Address::from(vm.read_memory(address_indirect))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn execute_stores_register_value_at_indirect_address() {
+        let mut vm = VirtualMachine::default();
+        vm.write_register(Register::R4, 0x4321);
+
+        let offset = Offset9(0b0_0000_0010);
+        let sext_offset = sign_extend(offset.value(), OFFSET_9_BIT_COUNT);
+        let pointer_address = vm.read_pc().wrapping_add(sext_offset);
+        let target_address = Address::from(0x4000);
+
+        vm.write_memory(pointer_address, target_address.into());
+
+        let op = StiOp {
+            sr: Register::R4,
+            offset,
+        };
+
+        op.execute(&mut vm);
+
+        assert_eq!(vm.read_memory(target_address), 0x4321);
     }
 }
