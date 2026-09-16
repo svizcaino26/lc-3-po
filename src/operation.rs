@@ -116,44 +116,56 @@ pub trait BinaryOp: Sized {
 
 /// Provides shared decoding and execution logic for LC-3 memory load operations.
 ///
-/// Memory load operations have one destination [`Register`] and an [`Offset`].
-///
-/// The [`Offset`] can either be an immediate 9-bit encoded value or
-/// a [`Register`] and an immediate 6-bit encoded value. Both cases
-/// require the immediate value to be sign-extended to compute a memory address.
+/// Memory load operations have one destination [`Register`] and an operation-specific
+/// [`MemoryOffset`]. The offset representation is selected by each implementation
+/// through the [`Self::Offset`] associated type.
 ///
 /// Implementors provide the operation-specific construction, operand
 /// resolution, and computation while the common decoding and execution
 /// logic is provided by this trait.
 pub trait MemoryLoadOp: Sized {
-    /// Construct the operation from extracted instruction data.
-    fn from_parts(dr: Register, offset: Offset) -> Self;
+    /// The offset representation used by this memory load operation.
+    type Offset: MemoryOffset;
 
-    /// Decodes the [`Offset`] value from an LC-3 instruction.
+    /// Construct the operation from it's decoded parts.
+    fn from_parts(dr: Register, offset: Self::Offset) -> Self;
+
+    /// Decodes the operation's offset from an LC-3 instruction.
     ///
     /// # Errors
-    /// - If an invalid bit range in requested.
-    fn offset(instruction: &DecodedInstruction) -> Result<Offset, InstructionError>;
+    ///
+    /// Returns [`InstructionError`] if an invalid bit range is requested while
+    /// decoding the offset.
+    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError>;
 
-    /// Decodes the operands of a memory load operation from a decoded instruction.
+    /// Decodes a memory load operation from a decoded instruction.
+    ///
+    /// The destination register is extracted from the [`DR_FIELD`] instruction
+    /// field, while the offset is decoded using the implementation's
+    /// [`Self::Offset`] type.
     ///
     /// The requested bit fields must be in the range `1..=16`
     ///
     /// # Errors
-    /// - If an invalid bit range in requested.
+    ///
+    /// Returns [`InstructionError`] if an invalid bit range is requested while
+    /// decoding the instruction.
     fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
-        let offset = Self::offset(&instruction)?;
+        let offset: Self::Offset = Self::offset(&instruction)?;
         let raw = instruction.raw();
         let dr = raw.decode_register(DR_FIELD)?;
         Ok(Self::from_parts(dr, offset))
     }
 
-    fn operands(self) -> MemoryLoadOperands;
+    /// Resolves the operation's operands from the construced operation.
+    fn operands(self) -> MemoryLoadOperands<Self::Offset>;
 
-    fn operate(offset: Offset, vm: &VirtualMachine) -> u16;
+    /// Performs the operation-specific computation.
+    fn operate(offset: Self::Offset, vm: &VirtualMachine) -> u16;
 
+    /// Executes the memory load operation and updates the condition code.
     fn execute(self, vm: &mut VirtualMachine) {
-        let operands = Self::operands(self);
+        let operands: MemoryLoadOperands<Self::Offset> = Self::operands(self);
         let result = Self::operate(operands.offset, vm);
 
         vm.write_register(operands.dr, result);
@@ -176,9 +188,9 @@ pub struct UnaryOperands {
 }
 
 /// Contains the resolved operands required for a memory load operation.
-pub struct MemoryLoadOperands {
+pub struct MemoryLoadOperands<T: MemoryOffset> {
     dr: Register,
-    offset: Offset,
+    offset: T,
 }
 
 /// Represents the operation mode based on instruction bit 11.
