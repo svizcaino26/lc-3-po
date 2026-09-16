@@ -191,33 +191,51 @@ pub enum BinaryOpMode {
     Immediate(u16),
 }
 
-/// Represents a memory operation addressing mode.
-///
-/// - [`Offset::Offset9`] represents an immediate 9-bit encoded value.
-/// - [`Offset::Offset6`] represents a paired [`Register`] - immediate 6-bit encoded value.
-#[derive(Debug)]
-pub enum Offset {
-    Offset9(u16),
-    Offset6 { base_r: Register, value: u16 },
-}
+/// Marks types that represent an LC-3 memory operation offset.
+pub trait MemoryOffset {}
 
-impl Offset {
-    /// Returns the extracted offset numeric value.
+/// Represents a 9-bit immediate offset encoded in an LC-3 instruction.
+///
+/// The value is stored in its encoded, unsigned representation. Operations
+/// using this offset are responsible for sign-extending it when resolving
+/// a memory address.
+#[derive(Debug)]
+pub struct Offset9(u16);
+
+impl MemoryOffset for Offset9 {}
+
+impl Offset9 {
+    /// Returns the encoded offset value.
     #[must_use]
     pub const fn value(&self) -> u16 {
-        match self {
-            Self::Offset9(value) | Self::Offset6 { value, .. } => *value,
-        }
+        self.0
+    }
+}
+
+/// Represents a 6-bit base-register offset encoded in an LC-3 instruction.
+///
+/// The offset consists of a base [`Register`] and a 6-bit immediate value.
+/// The immediate value is stored in its encoded, unsigned representation and
+/// must be sign-extended when resolving a memory address.
+#[derive(Debug)]
+pub struct Offset6 {
+    base_r: Register,
+    value: u16,
+}
+
+impl MemoryOffset for Offset6 {}
+
+impl Offset6 {
+    /// Returns the encoded 6-bit offset value.
+    #[must_use]
+    pub const fn value(&self) -> u16 {
+        self.value
     }
 
-    /// Returns the decoded base [`Register`] on a paired register-offset variant.
+    /// Returns the base register used to resolve the memory address.
     #[must_use]
-    pub const fn base_r(&self) -> Option<Register> {
-        if let Self::Offset6 { base_r, .. } = self {
-            Some(*base_r)
-        } else {
-            None
-        }
+    pub const fn base_r(&self) -> Register {
+        self.base_r
     }
 }
 
