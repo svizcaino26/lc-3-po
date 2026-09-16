@@ -30,6 +30,8 @@ impl MemoryOp for LeaOp {
         Ok(Offset9(offset))
     }
 
+    /// Computes a `PC` relative address and writes this computed address into
+    /// the destination register.
     fn execute(self, vm: &mut VirtualMachine) {
         let address_value: u16 = vm
             .read_pc()
@@ -37,5 +39,27 @@ impl MemoryOp for LeaOp {
             .into();
 
         vm.write_register(self.dr, address_value);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{instruction::RawInstruction, register::ConditionCode};
+
+    use super::*;
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn load_effectve_address() {
+        let decoded = DecodedInstruction::from(RawInstruction::from(0xE801));
+        let mut vm = VirtualMachine::default();
+        let dr = Register::R4;
+
+        let op = LeaOp::decode(decoded).unwrap();
+
+        op.execute(&mut vm);
+
+        assert_eq!(vm.read_register(dr), 0x3001);
+        assert_eq!(vm.read_cond(), ConditionCode::Zro);
     }
 }
