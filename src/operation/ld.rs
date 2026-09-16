@@ -1,7 +1,7 @@
 use crate::{
     instruction::{DecodedInstruction, InstructionError},
     operation::{
-        sign_extend, MemoryLoadOp, MemoryLoadOperands, Offset, OFFSET_9_BIT_COUNT,
+        sign_extend, MemoryLoadOp, MemoryLoadOperands, Offset9, OFFSET_9_BIT_COUNT,
         PC_OFFSET_9_FIELD,
     },
     register::Register,
@@ -14,21 +14,23 @@ use crate::{
 /// PC-relative address calculated from the instruction's 9-bit offset.
 pub struct LdOp {
     dr: Register,
-    offset: Offset,
+    offset: Offset9,
 }
 
 impl MemoryLoadOp for LdOp {
-    fn from_parts(dr: Register, offset: Offset) -> Self {
+    type Offset = Offset9;
+
+    fn from_parts(dr: Register, offset: Self::Offset) -> Self {
         Self { dr, offset }
     }
 
-    fn offset(instruction: &DecodedInstruction) -> Result<Offset, InstructionError> {
+    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError> {
         let raw = instruction.raw();
         let offset = raw.bits(PC_OFFSET_9_FIELD)?;
-        Ok(Offset::Offset9(offset))
+        Ok(Offset9(offset))
     }
 
-    fn operands(self) -> MemoryLoadOperands {
+    fn operands(self) -> MemoryLoadOperands<Self::Offset> {
         MemoryLoadOperands {
             dr: self.dr,
             offset: self.offset,
@@ -37,7 +39,7 @@ impl MemoryLoadOp for LdOp {
 
     /// Reads the value at the address obtained by adding the sign-extended
     /// offset to the incremented program counter.
-    fn operate(offset: Offset, vm: &VirtualMachine) -> u16 {
+    fn operate(offset: Self::Offset, vm: &VirtualMachine) -> u16 {
         let sext_offset = sign_extend(offset.value(), OFFSET_9_BIT_COUNT);
         let address = vm.read_pc().wrapping_add(sext_offset);
         vm.read_memory(address)
