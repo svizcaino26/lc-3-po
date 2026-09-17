@@ -1,4 +1,5 @@
 use crate::instruction::{DecodedInstruction, Opcode, RawInstruction};
+use crate::memory::Address;
 use crate::register::{ConditionCode, Register};
 use crate::{memory::Memory, register::Registers};
 
@@ -55,6 +56,23 @@ impl VirtualMachine {
     #[must_use]
     pub fn decode(instruction: RawInstruction) -> DecodedInstruction {
         DecodedInstruction::from(instruction)
+    }
+
+    /// Returns the current [`Address`] store in the pogram counter.
+    #[must_use]
+    pub const fn read_pc(&self) -> Address {
+        self.registers.pc()
+    }
+
+    /// Returns the underlying `u16` at the specified [`Address`]
+    #[must_use]
+    pub fn read_memory(&self, address: Address) -> u16 {
+        self.memory.read(address)
+    }
+
+    /// Writes a `u16` value at the specified [`Address`]
+    pub fn write_memory(&mut self, address: Address, value: u16) {
+        self.memory.write(address, value);
     }
 
     /// Runs the virtual machine, fetching and executing instructions until

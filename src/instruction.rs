@@ -22,7 +22,7 @@ pub enum InstructionError {
 }
 
 /// Represent the raw 16-bit instruction.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct RawInstruction(u16);
 
 impl From<u16> for RawInstruction {
@@ -91,6 +91,7 @@ impl RawInstruction {
 /// The original [`RawInstruction`] is retained so that additional instruction
 /// fields can be extracted from the original encoding during instruction
 /// processing.
+#[derive(Debug, Clone, Copy)]
 pub struct DecodedInstruction {
     opcode: Opcode,
     raw: RawInstruction,
@@ -112,6 +113,7 @@ impl DecodedInstruction {
 ///
 /// The opcode is encoded in the four most significant bits of every LC-3
 /// instruction.
+#[derive(Debug, Clone, Copy)]
 pub enum Opcode {
     Br = 0,    // branch
     Add = 1,   // add
