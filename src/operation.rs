@@ -20,6 +20,10 @@ pub mod st;
 pub mod sti;
 pub mod str;
 
+pub mod br;
+pub mod jmp;
+pub mod jsr;
+
 const DR_FIELD: RangeInclusive<u8> = 5..=7;
 const MEM_OP_REG_FIELD: RangeInclusive<u8> = 5..=7;
 const SR1_FIELD: RangeInclusive<u8> = 8..=10;
@@ -220,6 +224,23 @@ pub trait MemoryStoreOp: MemoryOp {
     }
 }
 
+pub trait ControlFlowOp {
+    /// Decodes a control flow operation from a decoded instruction.
+    /// Each implementor of the trait must provide its own decoding logic.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`InstructionError`] if an invalid bit range is requested while
+    /// decoding the instruction.
+    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError>
+    where
+        Self: Sized;
+
+    /// Executes the control flow operation, potentially altering the
+    /// [`VirtualMachine`] state.
+    fn execute(self, vm: &mut VirtualMachine);
+}
+
 /// Contains the resolved operands required to execute a binary operation.
 pub struct BinaryOperands {
     dr: Register,
@@ -294,6 +315,21 @@ impl Offset6 {
     #[must_use]
     pub const fn base_r(&self) -> Register {
         self.base_r
+    }
+}
+
+/// Represents an 11-bit immediate offset encoded in an LC-3 instruction.
+///
+/// The value is stored in its encoded, unsigned representation. Operations
+/// using this offset are responsible for sign-extending it when resolving
+/// a memory address.
+pub struct Offset11(u16);
+
+impl Offset11 {
+    /// Returns the encoded offset value.
+    #[must_use]
+    pub const fn value(&self) -> u16 {
+        self.0
     }
 }
 
