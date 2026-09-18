@@ -64,6 +64,10 @@ impl VirtualMachine {
         self.registers.pc()
     }
 
+    pub const fn set_pc(&mut self, address: Address) {
+        self.registers.set_pc(address);
+    }
+
     /// Returns the underlying `u16` at the specified [`Address`]
     #[must_use]
     pub fn read_memory(&self, address: Address) -> u16 {
