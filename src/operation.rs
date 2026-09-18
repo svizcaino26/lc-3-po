@@ -22,6 +22,8 @@ pub mod str;
 
 pub mod br;
 pub mod jmp;
+pub mod jsr;
+
 const DR_FIELD: RangeInclusive<u8> = 5..=7;
 const MEM_OP_REG_FIELD: RangeInclusive<u8> = 5..=7;
 const SR1_FIELD: RangeInclusive<u8> = 8..=10;
