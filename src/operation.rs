@@ -316,6 +316,21 @@ impl Offset6 {
     }
 }
 
+/// Represents an 11-bit immediate offset encoded in an LC-3 instruction.
+///
+/// The value is stored in its encoded, unsigned representation. Operations
+/// using this offset are responsible for sign-extending it when resolving
+/// a memory address.
+pub struct Offset11(u16);
+
+impl Offset11 {
+    /// Returns the encoded offset value.
+    #[must_use]
+    pub const fn value(&self) -> u16 {
+        self.0
+    }
+}
+
 /// Sign-extends an LC-3 value to 16 bits using two's complement representation.
 ///
 /// The most significant bit of the value's bit field is used as the sign bit.
