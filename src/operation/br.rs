@@ -51,3 +51,50 @@ impl ControlFlowOp for BrOp {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::{instruction::RawInstruction, memory::Address};
+
+    use super::*;
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn branch_with_no_condition_flags() {
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x001F));
+        let mut vm = VirtualMachine::default();
+
+        let pc_before = vm.read_pc();
+
+        let op = BrOp::decode(decoded).unwrap();
+
+        op.execute(&mut vm);
+
+        assert_eq!(pc_before, vm.read_pc());
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn branch_on_zero_condition() {
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x07FF));
+        let mut vm = VirtualMachine::default();
+
+        let op = BrOp::decode(decoded).unwrap();
+
+        op.execute(&mut vm);
+
+        assert_eq!(vm.read_pc(), Address::from(0x2FFF));
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn branch_on_no_condition_match() {
+        let decoded = DecodedInstruction::from(RawInstruction::from(0x03FF));
+        let mut vm = VirtualMachine::default();
+
+        let op = BrOp::decode(decoded).unwrap();
+
+        op.execute(&mut vm);
+
+        assert_eq!(vm.read_pc(), Address::from(0x3000));
+    }
+}
