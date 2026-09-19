@@ -13,6 +13,14 @@ use crate::{memory::Memory, register::Registers};
 pub struct VirtualMachine {
     memory: Memory,
     registers: Registers,
+    state: VmState,
+}
+
+#[derive(Default, Debug)]
+enum VmState {
+    #[default]
+    Running,
+    Stopped,
 }
 
 impl VirtualMachine {
@@ -105,6 +113,15 @@ impl VirtualMachine {
                 Opcode::Trap => todo!(),
             }
         }
+    }
+
+    pub const fn halt(&mut self) {
+        self.state = VmState::Stopped;
+    }
+
+    #[must_use]
+    pub const fn is_running(&self) -> bool {
+        matches!(self.state, VmState::Running)
     }
 }
 
