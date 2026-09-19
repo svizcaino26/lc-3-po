@@ -25,7 +25,6 @@ impl TrapOp {
         }
     }
 
-    #[allow(clippy::todo)]
     fn execute(self, vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         match self.0 {
             TrapRoutine::GetC => TrapRoutine::getc(vm),
@@ -38,6 +37,7 @@ impl TrapOp {
     }
 }
 
+/// Represents the different trap routines defined by the LC-3 architecture.
 pub enum TrapRoutine {
     GetC,
     Out,
@@ -48,13 +48,25 @@ pub enum TrapRoutine {
 }
 
 impl TrapRoutine {
+    /// Reads a single character from the [`VirtualMachine`] stdin stream without
+    /// echoing to the console.
+    /// The character's ASCII code is stored in [`Register::R0`]
+    ///
     /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if the underlying IO operation fails.
     fn getc(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         let byte = vm.read_byte()?;
         vm.write_register(Register::R0, byte.into());
         Ok(())
     }
 
+    /// Writes an ascii character to the [`VirtualMachine`] stdout stream.
+    /// The character ASCII code is stored in the lower 8 bits of the [`Register::R0`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if the underlying IO operation fails.
     #[allow(clippy::expect_used)]
     fn out(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         let byte =
@@ -63,6 +75,15 @@ impl TrapRoutine {
         Ok(())
     }
 
+    /// Writes a string of ascii characters to the [`VirtualMachine`] stdout stream.
+    ///
+    /// The string characters are read sequentially from memory starting from the address stored in [`Register::R0`].
+    /// Each memory location contains one character in its lower 8 bits and the string is terminated
+    /// by a `0x0000` value.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if the underlying IO operation fails.
     #[allow(clippy::expect_used)]
     fn puts(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         let mut address = Address::from(vm.read_register(Register::R0));
@@ -83,6 +104,15 @@ impl TrapRoutine {
         Ok(())
     }
 
+    /// Reads a single character from the [`VirtualMachine`] stdin stream and
+    /// echoes it to the console. The character's ASCII code is stored in
+    /// [`Register::R0`].
+    ///
+    /// A prompt is displayed before reading the input.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if the underlying IO operation fails.
     fn _in(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         vm.write_bytes(b"Enter a character: ")?;
 
@@ -94,6 +124,18 @@ impl TrapRoutine {
         Ok(())
     }
 
+    /// Writes a string of ascii characters to the [`VirtualMachine`] stdout stream.
+    ///
+    /// The string characters are read sequentially from memory starting from the address stored in [`Register::R0`].
+    ///
+    /// Each memory location contains two characters, each encoded in 8 bits.
+    /// The character encoded in the lower 8 bits is displayed first, followed
+    /// by the character encoded in the upper 8 bits when it is non-zero.
+    /// The string is terminated when the value `0x0000` is found.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if the underlying IO operation fails.
     #[allow(clippy::expect_used)]
     fn putsp(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         let mut buff: Vec<u8> = Vec::new();
@@ -122,6 +164,7 @@ impl TrapRoutine {
         Ok(())
     }
 
+    /// Halts execution and displays a message on the console.
     fn halt(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         vm.write_bytes(b"Stopping execution\n")?;
         vm.halt();
