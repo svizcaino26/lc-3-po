@@ -1,6 +1,7 @@
 use std::{
     io::{Read, Write},
     ops::RangeInclusive,
+    os::fd::AsRawFd,
 };
 
 use crate::{
@@ -33,8 +34,8 @@ impl TrapOp {
         match self.0 {
             TrapRoutine::GetC => TrapRoutine::get_c(vm),
             TrapRoutine::Out => TrapRoutine::out(vm),
-            TrapRoutine::PutS => todo!(),
-            TrapRoutine::In => todo!(),
+            TrapRoutine::PutS => TrapRoutine::puts(vm),
+            TrapRoutine::In => TrapRoutine::_in(vm),
             TrapRoutine::PutSp => todo!(),
             TrapRoutine::Halt => todo!(),
         }
@@ -79,6 +80,19 @@ impl TrapRoutine {
         }
 
         let () = std::io::stdout().write_all(&buff)?;
+
+        Ok(())
+    }
+
+    fn _in(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+        print!("Enter a character: ");
+        std::io::stdout().flush()?;
+
+        let mut byte = [0u8];
+        std::io::stdin().read_exact(&mut byte)?;
+
+        std::io::stdout().write_all(&byte)?;
+        vm.write_register(Register::R0, byte[0].into());
 
         Ok(())
     }
