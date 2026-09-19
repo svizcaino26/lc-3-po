@@ -38,6 +38,12 @@ const OFFSET_6_BIT_COUNT: u8 = 6;
 const PC_OFFSET_9_FIELD: RangeInclusive<u8> = 8..=16;
 const OFFSET_6_FIELD: RangeInclusive<u8> = 11..=16;
 
+pub trait Lc3Op: Sized {
+    /// # Errors
+    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError>;
+    fn execute(self, vm: &mut VirtualMachine);
+}
+
 pub trait UnaryOp: Sized {
     /// Constructs the operation from its decoded operands.
     fn from_parts(dr: Register, sr: Register) -> Self;
