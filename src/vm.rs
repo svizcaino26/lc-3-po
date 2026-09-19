@@ -1,3 +1,5 @@
+use std::io::{stdin, stdout, BufReader, BufWriter, Read, Stdin, Stdout, Write};
+
 use crate::instruction::{DecodedInstruction, Opcode, RawInstruction};
 use crate::memory::Address;
 use crate::register::{ConditionCode, Register};
@@ -9,11 +11,13 @@ use crate::{memory::Memory, register::Registers};
 /// for a total of 128 KiB of memory and 10 registers.
 /// 8 general-purpose registers, the program counter, and the
 /// condition code register.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct VirtualMachine {
     memory: Memory,
     registers: Registers,
     state: VmState,
+    stdin: BufReader<Stdin>,
+    stdout: BufWriter<Stdout>,
 }
 
 #[derive(Default, Debug)]
@@ -21,6 +25,18 @@ enum VmState {
     #[default]
     Running,
     Stopped,
+}
+
+impl Default for VirtualMachine {
+    fn default() -> Self {
+        Self {
+            stdin: BufReader::new(stdin()),
+            stdout: BufWriter::new(stdout()),
+            memory: Memory::default(),
+            registers: Registers::default(),
+            state: VmState::default(),
+        }
+    }
 }
 
 impl VirtualMachine {
@@ -122,6 +138,28 @@ impl VirtualMachine {
     #[must_use]
     pub const fn is_running(&self) -> bool {
         matches!(self.state, VmState::Running)
+    }
+
+    /// Reads a single byte from [`Stdin`]
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if the underlying IO operation fails.
+    pub fn read_byte(&mut self) -> Result<u8, std::io::Error> {
+        let mut byte = [0u8];
+        self.stdin.read_exact(&mut byte)?;
+        Ok(byte[0])
+    }
+
+    /// Writes a slice of bytes to [`Stdout`]
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if the underlying IO operation fails.
+    pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), std::io::Error> {
+        self.stdout.write_all(bytes)?;
+        self.stdout.flush()?;
+        Ok(())
     }
 }
 
