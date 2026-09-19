@@ -32,11 +32,11 @@ impl TrapOp {
     #[allow(clippy::todo)]
     fn execute(self, vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         match self.0 {
-            TrapRoutine::GetC => TrapRoutine::get_c(vm),
+            TrapRoutine::GetC => TrapRoutine::getc(vm),
             TrapRoutine::Out => TrapRoutine::out(vm),
             TrapRoutine::PutS => TrapRoutine::puts(vm),
             TrapRoutine::In => TrapRoutine::_in(vm),
-            TrapRoutine::PutSp => todo!(),
+            TrapRoutine::PutSp => TrapRoutine::putsp(vm),
             TrapRoutine::Halt => todo!(),
         }
     }
@@ -53,7 +53,7 @@ pub enum TrapRoutine {
 
 impl TrapRoutine {
     /// # Errors
-    fn get_c(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+    fn getc(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         let mut byte = [0u8];
         std::io::stdin().read_exact(&mut byte)?;
         vm.write_register(Register::R0, byte[0].into());
@@ -72,10 +72,15 @@ impl TrapRoutine {
     fn puts(vm: &VirtualMachine) -> Result<(), std::io::Error> {
         let mut address = Address::from(vm.read_register(Register::R0));
         let mut buff: Vec<u8> = Vec::new();
-        while vm.read_memory(address) != 0 {
-            let byte = u8::try_from(vm.read_memory(address) & 0x0FF).expect("mask value is 8 bits");
-            buff.push(byte);
-
+        loop {
+            let word = vm.read_memory(address);
+            if word != 0 {
+                let byte =
+                    u8::try_from(vm.read_memory(address) & 0x0FF).expect("mask value is 8 bits");
+                buff.push(byte);
+            } else {
+                break;
+            }
             address = address.wrapping_add(1);
         }
 
@@ -94,6 +99,34 @@ impl TrapRoutine {
         std::io::stdout().write_all(&byte)?;
         vm.write_register(Register::R0, byte[0].into());
 
+        Ok(())
+    }
+
+    #[allow(clippy::expect_used)]
+    fn putsp(vm: &VirtualMachine) -> Result<(), std::io::Error> {
+        let mut buff: Vec<u8> = Vec::new();
+        let mut address = Address::from(vm.read_register(Register::R0));
+
+        loop {
+            let word = vm.read_memory(address);
+
+            if word != 0 {
+                let first_byte = u8::try_from(word & 0x00FF).expect("mask value is 8 bits");
+                let second_byte = u8::try_from((word >> 8) & 0x00FF).expect("mask value is 8 bits");
+
+                buff.push(first_byte);
+
+                if second_byte != 0 {
+                    buff.push(second_byte);
+                }
+            } else {
+                break;
+            }
+
+            address = address.wrapping_add(1);
+        }
+
+        std::io::stdout().write_all(&buff)?;
         Ok(())
     }
 }
