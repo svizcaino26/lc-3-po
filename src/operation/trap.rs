@@ -1,7 +1,4 @@
-use std::{
-    io::{Read, Write},
-    ops::RangeInclusive,
-};
+use std::ops::RangeInclusive;
 
 use crate::{
     instruction::{DecodedInstruction, InstructionError},
@@ -36,10 +33,7 @@ impl TrapOp {
             TrapRoutine::PutS => TrapRoutine::puts(vm),
             TrapRoutine::In => TrapRoutine::_in(vm),
             TrapRoutine::PutSp => TrapRoutine::putsp(vm),
-            TrapRoutine::Halt => {
-                TrapRoutine::halt(vm);
-                Ok(())
-            }
+            TrapRoutine::Halt => TrapRoutine::halt(vm),
         }
     }
 }
@@ -56,29 +50,27 @@ pub enum TrapRoutine {
 impl TrapRoutine {
     /// # Errors
     fn getc(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
-        let mut byte = [0u8];
-        std::io::stdin().read_exact(&mut byte)?;
-        vm.write_register(Register::R0, byte[0].into());
+        let byte = vm.read_byte()?;
+        vm.write_register(Register::R0, byte.into());
         Ok(())
     }
 
     #[allow(clippy::expect_used)]
-    fn out(vm: &VirtualMachine) -> Result<(), std::io::Error> {
+    fn out(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         let byte =
             u8::try_from(vm.read_register(Register::R0) & 0x00FF).expect("mask value is 8 bits");
-        let _ = std::io::stdout().write(&[byte])?;
+        vm.write_bytes(&[byte])?;
         Ok(())
     }
 
     #[allow(clippy::expect_used)]
-    fn puts(vm: &VirtualMachine) -> Result<(), std::io::Error> {
+    fn puts(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         let mut address = Address::from(vm.read_register(Register::R0));
         let mut buff: Vec<u8> = Vec::new();
         loop {
             let word = vm.read_memory(address);
             if word != 0 {
-                let byte =
-                    u8::try_from(vm.read_memory(address) & 0x0FF).expect("mask value is 8 bits");
+                let byte = u8::try_from(word & 0x0FF).expect("mask value is 8 bits");
                 buff.push(byte);
             } else {
                 break;
@@ -86,26 +78,24 @@ impl TrapRoutine {
             address = address.wrapping_add(1);
         }
 
-        let () = std::io::stdout().write_all(&buff)?;
+        vm.write_bytes(&buff)?;
 
         Ok(())
     }
 
     fn _in(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
-        print!("Enter a character: ");
-        std::io::stdout().flush()?;
+        vm.write_bytes(b"Enter a character: ")?;
 
-        let mut byte = [0u8];
-        std::io::stdin().read_exact(&mut byte)?;
+        let byte = vm.read_byte()?;
 
-        std::io::stdout().write_all(&byte)?;
-        vm.write_register(Register::R0, byte[0].into());
+        vm.write_bytes(&[byte])?;
+        vm.write_register(Register::R0, byte.into());
 
         Ok(())
     }
 
     #[allow(clippy::expect_used)]
-    fn putsp(vm: &VirtualMachine) -> Result<(), std::io::Error> {
+    fn putsp(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
         let mut buff: Vec<u8> = Vec::new();
         let mut address = Address::from(vm.read_register(Register::R0));
 
@@ -128,13 +118,14 @@ impl TrapRoutine {
             address = address.wrapping_add(1);
         }
 
-        std::io::stdout().write_all(&buff)?;
+        vm.write_bytes(&buff)?;
         Ok(())
     }
 
-    fn halt(vm: &mut VirtualMachine) {
-        println!("Stopping execution");
+    fn halt(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+        vm.write_bytes(b"Stopping execution\n")?;
         vm.halt();
+        Ok(())
     }
 }
 
