@@ -19,6 +19,7 @@ const INSTRUCTION_BITS: u8 = 16;
 pub enum InstructionError {
     InvalidBitRange(RangeInclusive<u8>),
     InvalidBitConversion,
+    InvalidTrapCode(u8),
 }
 
 /// Represent the raw 16-bit instruction.

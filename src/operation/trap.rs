@@ -1,3 +1,8 @@
+use std::{
+    io::{Read, Write},
+    ops::RangeInclusive,
+};
+
 use crate::{
     instruction::{DecodedInstruction, InstructionError},
     register::Register,
@@ -7,6 +12,7 @@ use crate::{
 const TRAP_CODE_FIELD: RangeInclusive<u8> = 9..=16;
 
 pub struct TrapOp(TrapRoutine);
+
 impl TrapOp {
     fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
         let trap_code = instruction.raw().bits_as::<u8>(TRAP_CODE_FIELD)?;
@@ -20,6 +26,20 @@ impl TrapOp {
             _ => Err(InstructionError::InvalidTrapCode(trap_code)),
         }
     }
+
+    #[allow(clippy::todo)]
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+        match self.0 {
+            TrapRoutine::GetC => TrapRoutine::get_c(vm),
+            TrapRoutine::Out => TrapRoutine::out(vm),
+            TrapRoutine::PutS => todo!(),
+            TrapRoutine::In => todo!(),
+            TrapRoutine::PutSp => todo!(),
+            TrapRoutine::Halt => todo!(),
+        }
+    }
+}
+
 pub enum TrapRoutine {
     GetC,
     Out,
@@ -27,6 +47,24 @@ pub enum TrapRoutine {
     In,
     PutSp,
     Halt,
+}
+
+impl TrapRoutine {
+    /// # Errors
+    fn get_c(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+        let mut byte = [0u8];
+        std::io::stdin().read_exact(&mut byte)?;
+        vm.write_register(Register::R0, byte[0].into());
+        Ok(())
+    }
+
+    #[allow(clippy::expect_used)]
+    fn out(vm: &VirtualMachine) -> Result<(), std::io::Error> {
+        let byte =
+            u8::try_from(vm.read_register(Register::R0) & 0x00FF).expect("mask value is 8 bits");
+        let _ = std::io::stdout().write(&[byte])?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
