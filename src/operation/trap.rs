@@ -5,6 +5,7 @@ use std::{
 
 use crate::{
     instruction::{DecodedInstruction, InstructionError},
+    memory::Address,
     register::Register,
     vm::VirtualMachine,
 };
@@ -63,6 +64,22 @@ impl TrapRoutine {
         let byte =
             u8::try_from(vm.read_register(Register::R0) & 0x00FF).expect("mask value is 8 bits");
         let _ = std::io::stdout().write(&[byte])?;
+        Ok(())
+    }
+
+    #[allow(clippy::expect_used)]
+    fn puts(vm: &VirtualMachine) -> Result<(), std::io::Error> {
+        let mut address = Address::from(vm.read_register(Register::R0));
+        let mut buff: Vec<u8> = Vec::new();
+        while vm.read_memory(address) != 0 {
+            let byte = u8::try_from(vm.read_memory(address) & 0x0FF).expect("mask value is 8 bits");
+            buff.push(byte);
+
+            address = address.wrapping_add(1);
+        }
+
+        let () = std::io::stdout().write_all(&buff)?;
+
         Ok(())
     }
 }
