@@ -1,7 +1,6 @@
 use std::{
     io::{Read, Write},
     ops::RangeInclusive,
-    os::fd::AsRawFd,
 };
 
 use crate::{
@@ -37,7 +36,10 @@ impl TrapOp {
             TrapRoutine::PutS => TrapRoutine::puts(vm),
             TrapRoutine::In => TrapRoutine::_in(vm),
             TrapRoutine::PutSp => TrapRoutine::putsp(vm),
-            TrapRoutine::Halt => todo!(),
+            TrapRoutine::Halt => {
+                TrapRoutine::halt(vm);
+                Ok(())
+            }
         }
     }
 }
@@ -128,6 +130,11 @@ impl TrapRoutine {
 
         std::io::stdout().write_all(&buff)?;
         Ok(())
+    }
+
+    fn halt(vm: &mut VirtualMachine) {
+        println!("Stopping execution");
+        vm.halt();
     }
 }
 
