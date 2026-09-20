@@ -76,7 +76,7 @@ mod tests {
 
         let not_op = NotOp::decode(decoded).unwrap();
 
-        not_op.execute(&mut vm);
+        not_op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(dr), !vm.read_register(sr));
         assert_eq!(vm.read_cond(), ConditionCode::Neg);

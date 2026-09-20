@@ -194,23 +194,6 @@ pub trait MemoryStoreOp: MemoryOp {
     }
 }
 
-pub trait ControlFlowOp {
-    /// Decodes a control flow operation from a decoded instruction.
-    /// Each implementor of the trait must provide its own decoding logic.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`InstructionError`] if an invalid bit range is requested while
-    /// decoding the instruction.
-    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error>
-    where
-        Self: Sized;
-
-    /// Executes the control flow operation, potentially altering the
-    /// [`VirtualMachine`] state.
-    fn execute(self, vm: &mut VirtualMachine);
-}
-
 /// Contains the resolved operands required to execute a binary operation.
 pub struct BinaryOperands {
     dr: Register,
