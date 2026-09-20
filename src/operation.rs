@@ -43,43 +43,6 @@ pub trait Lc3Op: Sized {
     fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error>;
 }
 
-pub trait UnaryOp: Sized {
-    /// Constructs the operation from its decoded operands.
-    fn from_parts(dr: Register, sr: Register) -> Self;
-
-    /// Decodes the operands of a unary operation from a decoded instruction.
-    ///
-    /// The destination and source registers are extracted from their respective fields.
-    /// The requested bit fields must be in the range `1..=16`
-    ///
-    /// # Errors
-    /// - If an invalid bit range in requested.
-    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
-        let raw = instruction.raw();
-        let dr = Register::from(raw.bits_as::<u8>(DR_FIELD)?);
-        let sr = Register::from(raw.bits_as::<u8>(SR1_FIELD)?);
-
-        Ok(Self::from_parts(dr, sr))
-    }
-
-    /// Resolves the operation's operands from the virtual machine state.
-    fn operands(self, vm: &VirtualMachine) -> UnaryOperands;
-
-    /// Performs the operation-specific computation.
-    fn operate(value: u16) -> u16;
-
-    /// Executes the unary operation and updates the condition code.
-    fn execute(self, vm: &mut VirtualMachine) {
-        let operands = Self::operands(self, vm);
-
-        let result = Self::operate(operands.value);
-
-        vm.write_register(operands.dr, result);
-
-        vm.set_cond(result);
-    }
-}
-
 /// Provides shared decoding and execution logic for LC-3 binary operations.
 ///
 /// Binary operations have two source operands and one destination register.
@@ -253,12 +216,6 @@ pub struct BinaryOperands {
     dr: Register,
     lhs: u16,
     rhs: u16,
-}
-
-/// Contains the resolved operands required to execute a unary operation.
-pub struct UnaryOperands {
-    dr: Register,
-    value: u16,
 }
 
 /// Contains the resolved operands required for a memory load operation.
