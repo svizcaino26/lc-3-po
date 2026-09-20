@@ -1,6 +1,7 @@
 use std::ops::RangeInclusive;
 
 use crate::error::{InstructionError, Lc3Error};
+use crate::operation::Lc3Op;
 use crate::{
     instruction::DecodedInstruction, memory::Address, register::Register, vm::VirtualMachine,
 };
@@ -9,7 +10,7 @@ const TRAP_CODE_FIELD: RangeInclusive<u8> = 9..=16;
 
 pub struct TrapOp(TrapRoutine);
 
-impl TrapOp {
+impl Lc3Op for TrapOp {
     fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let trap_code = instruction.raw().bits_as::<u8>(TRAP_CODE_FIELD)?;
         match trap_code {
