@@ -36,10 +36,25 @@ const OFFSET_6_BIT_COUNT: u8 = 6;
 const PC_OFFSET_9_FIELD: RangeInclusive<u8> = 8..=16;
 const OFFSET_6_FIELD: RangeInclusive<u8> = 11..=16;
 
+/// Represents an executable LC-3 operation.
+///
+/// An operation is decoded from an instruction and then executed against
+/// the virtual machine.
 pub trait Lc3Op: Sized {
+    /// Decodes an operation from a decoded instruction.
+    ///
     /// # Errors
+    ///
+    /// Returns [`Lc3Error`] if the instruction contains invalid operands
+    /// or otherwise cannot be decoded into this operation.
     fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error>;
+
+    /// Executes the operation against the virtual machine.
+    ///
     /// # Errors
+    ///
+    /// Returns [`Lc3Error`] if execution encounters an error, such as an
+    /// I/O failure.
     fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error>;
 }
 
