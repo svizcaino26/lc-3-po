@@ -1,5 +1,7 @@
+use crate::error::Lc3Error;
 use crate::{
-    operation::{UnaryOp, UnaryOperands},
+    instruction::DecodedInstruction,
+    operation::{Lc3Op, DR_FIELD, SR1_FIELD},
     register::Register,
     vm::VirtualMachine,
 };
@@ -17,20 +19,29 @@ pub struct NotOp {
     sr: Register,
 }
 
-impl UnaryOp for NotOp {
-    fn from_parts(dr: Register, sr: Register) -> Self {
+impl Lc3Op for NotOp {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
+        let raw = instruction.raw();
+        let dr = Register::from(raw.bits_as::<u8>(DR_FIELD)?);
+        let sr = Register::from(raw.bits_as::<u8>(SR1_FIELD)?);
+
+        Ok(Self::from_parts(dr, sr))
+    }
+
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
+        let result = !vm.read_register(self.sr);
+
+        vm.write_register(self.dr, result);
+
+        vm.set_cond(result);
+
+        Ok(())
+    }
+}
+
+impl NotOp {
+    const fn from_parts(dr: Register, sr: Register) -> Self {
         Self { dr, sr }
-    }
-
-    fn operands(self, vm: &VirtualMachine) -> UnaryOperands {
-        UnaryOperands {
-            dr: self.dr,
-            value: vm.read_register(self.sr),
-        }
-    }
-
-    fn operate(value: u16) -> u16 {
-        !value
     }
 }
 
