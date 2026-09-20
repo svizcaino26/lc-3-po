@@ -1,10 +1,8 @@
 use std::ops::RangeInclusive;
 
+use crate::error::{InstructionError, Lc3Error};
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
-    memory::Address,
-    register::Register,
-    vm::VirtualMachine,
+    instruction::DecodedInstruction, memory::Address, register::Register, vm::VirtualMachine,
 };
 
 const TRAP_CODE_FIELD: RangeInclusive<u8> = 9..=16;
@@ -12,7 +10,7 @@ const TRAP_CODE_FIELD: RangeInclusive<u8> = 9..=16;
 pub struct TrapOp(TrapRoutine);
 
 impl TrapOp {
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let trap_code = instruction.raw().bits_as::<u8>(TRAP_CODE_FIELD)?;
         match trap_code {
             0x20 => Ok(Self(TrapRoutine::GetC)),
@@ -21,11 +19,11 @@ impl TrapOp {
             0x23 => Ok(Self(TrapRoutine::In)),
             0x24 => Ok(Self(TrapRoutine::PutSp)),
             0x25 => Ok(Self(TrapRoutine::Halt)),
-            _ => Err(InstructionError::InvalidTrapCode(trap_code)),
+            _ => Err(InstructionError::InvalidTrapCode(trap_code).into()),
         }
     }
 
-    fn execute(self, vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         match self.0 {
             TrapRoutine::GetC => TrapRoutine::getc(vm),
             TrapRoutine::Out => TrapRoutine::out(vm),
@@ -55,7 +53,7 @@ impl TrapRoutine {
     /// # Errors
     ///
     /// Returns [`std::io::Error`] if the underlying IO operation fails.
-    fn getc(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+    fn getc(vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         let byte = vm.read_byte()?;
         vm.write_register(Register::R0, byte.into());
         Ok(())
@@ -68,7 +66,7 @@ impl TrapRoutine {
     ///
     /// Returns [`std::io::Error`] if the underlying IO operation fails.
     #[allow(clippy::expect_used)]
-    fn out(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+    fn out(vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         let byte =
             u8::try_from(vm.read_register(Register::R0) & 0x00FF).expect("mask value is 8 bits");
         vm.write_bytes(&[byte])?;
@@ -85,7 +83,7 @@ impl TrapRoutine {
     ///
     /// Returns [`std::io::Error`] if the underlying IO operation fails.
     #[allow(clippy::expect_used)]
-    fn puts(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+    fn puts(vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         let mut address = Address::from(vm.read_register(Register::R0));
         let mut buff: Vec<u8> = Vec::new();
         loop {
@@ -113,7 +111,7 @@ impl TrapRoutine {
     /// # Errors
     ///
     /// Returns [`std::io::Error`] if the underlying IO operation fails.
-    fn _in(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+    fn _in(vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         vm.write_bytes(b"Enter a character: ")?;
 
         let byte = vm.read_byte()?;
@@ -137,7 +135,7 @@ impl TrapRoutine {
     ///
     /// Returns [`std::io::Error`] if the underlying IO operation fails.
     #[allow(clippy::expect_used)]
-    fn putsp(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+    fn putsp(vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         let mut buff: Vec<u8> = Vec::new();
         let mut address = Address::from(vm.read_register(Register::R0));
 
@@ -165,7 +163,7 @@ impl TrapRoutine {
     }
 
     /// Halts execution and displays a message on the console.
-    fn halt(vm: &mut VirtualMachine) -> Result<(), std::io::Error> {
+    fn halt(vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         vm.write_bytes(b"Stopping execution\n")?;
         vm.halt();
         Ok(())

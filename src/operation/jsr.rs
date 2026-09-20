@@ -1,7 +1,8 @@
 use std::ops::RangeInclusive;
 
+use crate::error::Lc3Error;
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
+    instruction::DecodedInstruction,
     memory::Address,
     operation::{sign_extend, ControlFlowOp, Offset11},
     register::Register,
@@ -33,7 +34,7 @@ pub enum JsrMode {
 
 impl ControlFlowOp for JsrOp {
     #[allow(clippy::unreachable)]
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let raw = instruction.raw();
         match raw.bits(MODE_BIT_FIELD)? {
             0 => Ok(Self {

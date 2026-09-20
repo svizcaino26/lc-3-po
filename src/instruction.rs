@@ -8,21 +8,13 @@
 
 use std::ops::RangeInclusive;
 
-use crate::register::Register;
+use crate::{error::InstructionError, register::Register};
 
 /// bit shift for extacting opcode field from raw `u16` instruction
 const OPCODE_SHIFT: u16 = 12;
 const INSTRUCTION_BITS: u8 = 16;
 
 /// Represents a raw `u16` instruction read from an LC-3 program.
-#[derive(Debug, PartialEq, Eq)]
-pub enum InstructionError {
-    InvalidBitRange(RangeInclusive<u8>),
-    InvalidBitConversion,
-    InvalidTrapCode(u8),
-}
-
-/// Represent the raw 16-bit instruction.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct RawInstruction(u16);
 

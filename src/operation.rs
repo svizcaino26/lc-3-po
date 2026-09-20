@@ -1,10 +1,8 @@
 use std::ops::RangeInclusive;
 
+use crate::error::Lc3Error;
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
-    memory::Address,
-    register::Register,
-    vm::VirtualMachine,
+    instruction::DecodedInstruction, memory::Address, register::Register, vm::VirtualMachine,
 };
 
 pub mod add;
@@ -40,8 +38,9 @@ const OFFSET_6_FIELD: RangeInclusive<u8> = 11..=16;
 
 pub trait Lc3Op: Sized {
     /// # Errors
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError>;
-    fn execute(self, vm: &mut VirtualMachine);
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error>;
+    /// # Errors
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error>;
 }
 
 pub trait UnaryOp: Sized {
@@ -55,7 +54,7 @@ pub trait UnaryOp: Sized {
     ///
     /// # Errors
     /// - If an invalid bit range in requested.
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let raw = instruction.raw();
         let dr = Register::from(raw.bits_as::<u8>(DR_FIELD)?);
         let sr = Register::from(raw.bits_as::<u8>(SR1_FIELD)?);
@@ -105,7 +104,7 @@ pub trait BinaryOp: Sized {
     /// # Errors
     /// - If an invalid bit range in requested.
     #[allow(clippy::unreachable)]
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let raw = instruction.raw();
         let dr = raw.decode_register(DR_FIELD)?;
         let sr1 = raw.decode_register(SR1_FIELD)?;
@@ -156,7 +155,7 @@ pub trait MemoryOp: Sized {
     ///
     /// Returns [`InstructionError`] if an invalid bit range is requested while
     /// decoding the offset.
-    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError>;
+    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, Lc3Error>;
 
     /// Decodes a memory operation from a decoded instruction.
     ///
@@ -167,7 +166,7 @@ pub trait MemoryOp: Sized {
     ///
     /// Returns [`InstructionError`] if an invalid bit range is requested while
     /// decoding the instruction.
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let offset: Self::Offset = Self::offset(&instruction)?;
         let register = instruction.raw().decode_register(MEM_OP_REG_FIELD)?;
         Ok(Self::from_parts(register, offset))
@@ -240,7 +239,7 @@ pub trait ControlFlowOp {
     ///
     /// Returns [`InstructionError`] if an invalid bit range is requested while
     /// decoding the instruction.
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError>
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error>
     where
         Self: Sized;
 

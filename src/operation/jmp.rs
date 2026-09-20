@@ -1,10 +1,8 @@
 use std::ops::RangeInclusive;
 
+use crate::error::Lc3Error;
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
-    memory::Address,
-    operation::ControlFlowOp,
-    register::Register,
+    instruction::DecodedInstruction, memory::Address, operation::ControlFlowOp, register::Register,
     vm::VirtualMachine,
 };
 
@@ -17,7 +15,7 @@ const BASE_REGISTER_FIELD: RangeInclusive<u8> = 8..=10;
 pub struct JmpOp(Register);
 
 impl ControlFlowOp for JmpOp {
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         Ok(Self(
             instruction.raw().decode_register(BASE_REGISTER_FIELD)?,
         ))

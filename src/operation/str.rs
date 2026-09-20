@@ -1,5 +1,6 @@
+use crate::error::Lc3Error;
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
+    instruction::DecodedInstruction,
     memory::Address,
     operation::{
         sign_extend, MemoryOp, MemoryOperands, MemoryStoreOp, Offset6, OFFSET_6_BIT_COUNT,
@@ -29,7 +30,7 @@ impl MemoryOp for StrOp {
         }
     }
 
-    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError> {
+    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, Lc3Error> {
         let raw = instruction.raw();
         let offset = raw.bits(OFFSET_6_FIELD)?;
         let register = raw.decode_register(SR1_FIELD)?;

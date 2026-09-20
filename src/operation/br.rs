@@ -5,8 +5,9 @@ const P_FLAG: u8 = 1;
 
 use std::ops::RangeInclusive;
 
+use crate::error::Lc3Error;
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
+    instruction::DecodedInstruction,
     operation::{sign_extend, ControlFlowOp, Offset9, OFFSET_9_BIT_COUNT, PC_OFFSET_9_FIELD},
     register::ConditionCode,
     vm::VirtualMachine,
@@ -24,7 +25,7 @@ pub struct BrOp {
 }
 
 impl ControlFlowOp for BrOp {
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let raw = instruction.raw();
         let condition_flags = raw.bits_as::<u8>(CONDITION_FLAGS_FIELD)?;
         let offset = raw.bits(PC_OFFSET_9_FIELD)?;
