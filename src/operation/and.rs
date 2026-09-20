@@ -1,7 +1,9 @@
 use super::IMM5_BIT_COUNT;
 use crate::{
-    operation::{sign_extend, BinaryOp, BinaryOpMode, BinaryOperands},
+    error::Lc3Error,
+    operation::{sign_extend, BinaryOp, BinaryOpMode, BinaryOperands, Lc3Op},
     register::Register,
+    vm::VirtualMachine,
 };
 
 /// Represents an LC-3 AND operation.
@@ -18,6 +20,17 @@ pub struct AndOp {
     dr: Register,
     sr1: Register,
     mode: BinaryOpMode,
+}
+
+impl Lc3Op for AndOp {
+    fn decode(instruction: crate::instruction::DecodedInstruction) -> Result<Self, Lc3Error> {
+        Self::decode_bin_op(instruction)
+    }
+
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
+        Self::execute_bin_op(self, vm);
+        Ok(())
+    }
 }
 
 impl BinaryOp for AndOp {
@@ -73,7 +86,7 @@ mod tests {
         vm.write_register(Register::R4, 0x0001);
 
         let and_op = AndOp::decode(decoded).unwrap();
-        and_op.execute(&mut vm);
+        and_op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(dr), 0x0001);
         assert_matches!(vm.read_cond(), crate::register::ConditionCode::Pos);
@@ -90,7 +103,7 @@ mod tests {
         vm.write_register(Register::R3, 0x0001);
 
         let and_op = AndOp::decode(decoded).unwrap();
-        and_op.execute(&mut vm);
+        and_op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(dr), 1);
         assert_matches!(vm.read_cond(), crate::register::ConditionCode::Pos);

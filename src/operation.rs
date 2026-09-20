@@ -52,7 +52,7 @@ pub trait Lc3Op: Sized {
 /// Implementors provide the operation-specific construction, operand
 /// resolution, and computation while the common decoding and execution
 /// logic is provided by this trait.
-pub trait BinaryOp: Sized {
+pub trait BinaryOp: Lc3Op {
     /// Constructs the operation from its decoded operands.
     fn from_parts(dr: Register, sr1: Register, mode: BinaryOpMode) -> Self;
 
@@ -67,7 +67,7 @@ pub trait BinaryOp: Sized {
     /// # Errors
     /// - If an invalid bit range in requested.
     #[allow(clippy::unreachable)]
-    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
+    fn decode_bin_op(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let raw = instruction.raw();
         let dr = raw.decode_register(DR_FIELD)?;
         let sr1 = raw.decode_register(SR1_FIELD)?;
@@ -87,7 +87,7 @@ pub trait BinaryOp: Sized {
     fn operands(self, vm: &VirtualMachine) -> BinaryOperands;
 
     /// Executes the binary operation and updates the condition code.
-    fn execute(self, vm: &mut VirtualMachine) {
+    fn execute_bin_op(self, vm: &mut VirtualMachine) {
         let operands = Self::operands(self, vm);
         let result = Self::operate(operands.lhs, operands.rhs);
 

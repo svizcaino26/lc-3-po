@@ -1,7 +1,10 @@
 use super::IMM5_BIT_COUNT;
 use crate::{
-    operation::{sign_extend, BinaryOp, BinaryOpMode, BinaryOperands},
+    error::Lc3Error,
+    instruction::DecodedInstruction,
+    operation::{sign_extend, BinaryOp, BinaryOpMode, BinaryOperands, Lc3Op},
     register::Register,
+    vm::VirtualMachine,
 };
 
 /// Represents an LC-3 ADD operation.
@@ -22,6 +25,16 @@ pub struct AddOp {
     mode: BinaryOpMode,
 }
 
+impl Lc3Op for AddOp {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
+        Self::decode_bin_op(instruction)
+    }
+
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
+        Self::execute_bin_op(self, vm);
+        Ok(())
+    }
+}
 impl BinaryOp for AddOp {
     fn from_parts(dr: Register, sr1: Register, mode: BinaryOpMode) -> Self {
         Self { dr, sr1, mode }
@@ -75,7 +88,7 @@ mod tests {
         vm.write_register(Register::R4, 0x0001);
 
         let add_op = AddOp::decode(decoded).unwrap();
-        add_op.execute(&mut vm);
+        add_op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(dr), 0x0002);
         assert_matches!(vm.read_cond(), crate::register::ConditionCode::Pos);
@@ -92,7 +105,7 @@ mod tests {
         vm.write_register(Register::R3, 0x0001);
 
         let add_op = AddOp::decode(decoded).unwrap();
-        add_op.execute(&mut vm);
+        add_op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(dr), 0x008);
         assert_matches!(vm.read_cond(), crate::register::ConditionCode::Pos);
@@ -109,7 +122,7 @@ mod tests {
         vm.write_register(Register::R3, 0x0005);
 
         let add_op = AddOp::decode(decoded).unwrap();
-        add_op.execute(&mut vm);
+        add_op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(dr), 0x0004);
         assert_matches!(vm.read_cond(), crate::register::ConditionCode::Pos);
@@ -126,7 +139,7 @@ mod tests {
         vm.write_register(Register::R3, 0x7FFF);
 
         let add_op = AddOp::decode(decoded).unwrap();
-        add_op.execute(&mut vm);
+        add_op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(dr), 0x8000);
         assert_matches!(vm.read_cond(), crate::register::ConditionCode::Neg);
