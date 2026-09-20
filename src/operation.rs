@@ -105,7 +105,7 @@ pub trait BinaryOp: Lc3Op {
 ///
 /// Implementors provide the operation-specific offset decoding and execution,
 /// while this trait provides the common instruction decoding logic.
-pub trait MemoryOp: Sized {
+pub trait MemoryOp: Lc3Op {
     /// The offset representation used by this memory operation.
     type Offset: MemoryOffset;
 
@@ -129,14 +129,11 @@ pub trait MemoryOp: Sized {
     ///
     /// Returns [`InstructionError`] if an invalid bit range is requested while
     /// decoding the instruction.
-    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
+    fn decode_mem_op(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let offset: Self::Offset = Self::offset(&instruction)?;
         let register = instruction.raw().decode_register(MEM_OP_REG_FIELD)?;
         Ok(Self::from_parts(register, offset))
     }
-
-    /// Executes the memory operation.
-    fn execute(self, vm: &mut VirtualMachine);
 }
 
 /// Provides shared execution logic for LC-3 memory load operations.

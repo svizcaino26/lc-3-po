@@ -1,4 +1,5 @@
 use crate::error::Lc3Error;
+use crate::operation::Lc3Op;
 use crate::{
     instruction::DecodedInstruction,
     memory::Address,
@@ -19,6 +20,17 @@ pub struct LdrOp {
     offset: Offset6,
 }
 
+impl Lc3Op for LdrOp {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
+        Self::decode_mem_op(instruction)
+    }
+
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
+        self.execute_load(vm);
+        Ok(())
+    }
+}
+
 impl MemoryOp for LdrOp {
     type Offset = Offset6;
 
@@ -37,10 +49,6 @@ impl MemoryOp for LdrOp {
             base_r,
             value: offset,
         })
-    }
-
-    fn execute(self, vm: &mut VirtualMachine) {
-        self.execute_load(vm);
     }
 }
 
@@ -70,6 +78,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn ldr_reads_from_base_register_plus_positive_offset() {
         let mut vm = VirtualMachine::default();
 
@@ -84,12 +93,13 @@ mod tests {
             },
         };
 
-        op.execute(&mut vm);
+        op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(Register::R0), 0x1234);
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn ldr_reads_from_base_register_plus_negative_offset() {
         let mut vm = VirtualMachine::default();
 
@@ -104,7 +114,7 @@ mod tests {
             },
         };
 
-        op.execute(&mut vm);
+        op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(Register::R0), 0x5678);
     }
