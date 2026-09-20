@@ -2,6 +2,8 @@ use std::ops::RangeInclusive;
 
 use thiserror::Error;
 
+use crate::instruction::Opcode;
+
 #[derive(Debug, Error)]
 pub enum Lc3Error {
     #[error("IO operation error.")]
@@ -9,6 +11,9 @@ pub enum Lc3Error {
 
     #[error("Failed decoding instruction")]
     Instruction(#[from] InstructionError),
+
+    #[error("Unsupported instructioin : {0:?}")]
+    UnsupportedInstruction(Opcode),
 }
 
 #[derive(Debug, PartialEq, Eq, Error)]
