@@ -191,4 +191,18 @@ mod tests {
         let instr = DecodedInstruction::from(RawInstruction::from(0xF0FF));
         assert!(TrapOp::decode(instr).is_err());
     }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn execution_is_halted() {
+        let mut vm = VirtualMachine::default();
+        let instruction = DecodedInstruction::from(RawInstruction::from(0xF025));
+
+        assert!(vm.is_running());
+
+        let op = TrapOp::decode(instruction).unwrap();
+        op.execute(&mut vm).unwrap();
+
+        assert!(!vm.is_running());
+    }
 }
