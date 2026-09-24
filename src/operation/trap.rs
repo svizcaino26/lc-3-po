@@ -86,7 +86,9 @@ impl TrapRoutine {
     #[allow(clippy::expect_used)]
     fn puts(vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         let mut address = Address::from(vm.read_register(Register::R0));
+        let loop_address = address;
         let mut buff: Vec<u8> = Vec::new();
+
         loop {
             let word = vm.read_memory(address);
             if word != 0 {
@@ -96,6 +98,10 @@ impl TrapRoutine {
                 break;
             }
             address = address.wrapping_add(1);
+
+            if address == loop_address {
+                return Err(Lc3Error::MemoryLoop);
+            }
         }
 
         vm.write_bytes(&buff)?;
@@ -139,6 +145,7 @@ impl TrapRoutine {
     fn putsp(vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         let mut buff: Vec<u8> = Vec::new();
         let mut address = Address::from(vm.read_register(Register::R0));
+        let loop_address = address;
 
         loop {
             let word = vm.read_memory(address);
@@ -157,6 +164,10 @@ impl TrapRoutine {
             }
 
             address = address.wrapping_add(1);
+
+            if address == loop_address {
+                return Err(Lc3Error::MemoryLoop);
+            }
         }
 
         vm.write_bytes(&buff)?;

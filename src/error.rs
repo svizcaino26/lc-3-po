@@ -14,6 +14,9 @@ pub enum Lc3Error {
 
     #[error("Unsupported instructioin : {0:?}")]
     UnsupportedInstruction(Opcode),
+
+    #[error("memory address wrapped around without finding a null terminator")]
+    MemoryLoop,
 }
 
 #[derive(Debug, PartialEq, Eq, Error)]
