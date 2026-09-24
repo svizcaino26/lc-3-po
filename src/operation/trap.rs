@@ -29,7 +29,7 @@ impl Lc3Op for TrapOp {
             TrapRoutine::GetC => TrapRoutine::getc(vm),
             TrapRoutine::Out => TrapRoutine::out(vm),
             TrapRoutine::PutS => TrapRoutine::puts(vm),
-            TrapRoutine::In => TrapRoutine::_in(vm),
+            TrapRoutine::In => TrapRoutine::r#in(vm),
             TrapRoutine::PutSp => TrapRoutine::putsp(vm),
             TrapRoutine::Halt => TrapRoutine::halt(vm),
         }
@@ -112,7 +112,7 @@ impl TrapRoutine {
     /// # Errors
     ///
     /// Returns [`std::io::Error`] if the underlying IO operation fails.
-    fn _in(vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
+    fn r#in(vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         vm.write_bytes(b"Enter a character: ")?;
 
         let byte = vm.read_byte()?;
