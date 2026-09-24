@@ -1,9 +1,11 @@
 use std::ops::RangeInclusive;
 
+use crate::error::Lc3Error;
+use crate::operation::Lc3Op;
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
+    instruction::DecodedInstruction,
     memory::Address,
-    operation::{sign_extend, ControlFlowOp, Offset11},
+    operation::{sign_extend, Offset11},
     register::Register,
     vm::VirtualMachine,
 };
@@ -31,9 +33,9 @@ pub enum JsrMode {
     Register(Register),
 }
 
-impl ControlFlowOp for JsrOp {
+impl Lc3Op for JsrOp {
     #[allow(clippy::unreachable)]
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let raw = instruction.raw();
         match raw.bits(MODE_BIT_FIELD)? {
             0 => Ok(Self {
@@ -46,7 +48,7 @@ impl ControlFlowOp for JsrOp {
         }
     }
 
-    fn execute(self, vm: &mut VirtualMachine) {
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         vm.write_register(Register::R7, vm.read_pc().into());
         match self.mode {
             JsrMode::Offset(offset) => {
@@ -57,6 +59,7 @@ impl ControlFlowOp for JsrOp {
                 vm.set_pc(Address::from(vm.read_register(register)));
             }
         }
+        Ok(())
     }
 }
 
@@ -73,7 +76,7 @@ mod tests {
         let decoded = DecodedInstruction::from(RawInstruction::from(0x48FF));
         let op = JsrOp::decode(decoded).unwrap();
 
-        op.execute(&mut vm);
+        op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(Register::R7), 0x3000);
 
@@ -88,7 +91,7 @@ mod tests {
         let op = JsrOp::decode(decoded).unwrap();
 
         vm.write_register(Register::R3, 0xF1F1);
-        op.execute(&mut vm);
+        op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(Register::R7), 0x3000);
 

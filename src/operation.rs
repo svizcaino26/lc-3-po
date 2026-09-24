@@ -1,10 +1,8 @@
 use std::ops::RangeInclusive;
 
+use crate::error::Lc3Error;
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
-    memory::Address,
-    register::Register,
-    vm::VirtualMachine,
+    instruction::DecodedInstruction, memory::Address, register::Register, vm::VirtualMachine,
 };
 
 pub mod add;
@@ -24,6 +22,8 @@ pub mod br;
 pub mod jmp;
 pub mod jsr;
 
+pub mod trap;
+
 const DR_FIELD: RangeInclusive<u8> = 5..=7;
 const MEM_OP_REG_FIELD: RangeInclusive<u8> = 5..=7;
 const SR1_FIELD: RangeInclusive<u8> = 8..=10;
@@ -36,41 +36,26 @@ const OFFSET_6_BIT_COUNT: u8 = 6;
 const PC_OFFSET_9_FIELD: RangeInclusive<u8> = 8..=16;
 const OFFSET_6_FIELD: RangeInclusive<u8> = 11..=16;
 
-pub trait UnaryOp: Sized {
-    /// Constructs the operation from its decoded operands.
-    fn from_parts(dr: Register, sr: Register) -> Self;
-
-    /// Decodes the operands of a unary operation from a decoded instruction.
-    ///
-    /// The destination and source registers are extracted from their respective fields.
-    /// The requested bit fields must be in the range `1..=16`
+/// Represents an executable LC-3 operation.
+///
+/// An operation is decoded from an instruction and then executed against
+/// the virtual machine.
+pub trait Lc3Op: Sized {
+    /// Decodes an operation from a decoded instruction.
     ///
     /// # Errors
-    /// - If an invalid bit range in requested.
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
-        let raw = instruction.raw();
-        let dr = Register::from(raw.bits_as::<u8>(DR_FIELD)?);
-        let sr = Register::from(raw.bits_as::<u8>(SR1_FIELD)?);
+    ///
+    /// Returns [`Lc3Error`] if the instruction contains invalid operands
+    /// or otherwise cannot be decoded into this operation.
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error>;
 
-        Ok(Self::from_parts(dr, sr))
-    }
-
-    /// Resolves the operation's operands from the virtual machine state.
-    fn operands(self, vm: &VirtualMachine) -> UnaryOperands;
-
-    /// Performs the operation-specific computation.
-    fn operate(value: u16) -> u16;
-
-    /// Executes the unary operation and updates the condition code.
-    fn execute(self, vm: &mut VirtualMachine) {
-        let operands = Self::operands(self, vm);
-
-        let result = Self::operate(operands.value);
-
-        vm.write_register(operands.dr, result);
-
-        vm.set_cond(result);
-    }
+    /// Executes the operation against the virtual machine.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Lc3Error`] if execution encounters an error, such as an
+    /// I/O failure.
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error>;
 }
 
 /// Provides shared decoding and execution logic for LC-3 binary operations.
@@ -82,7 +67,7 @@ pub trait UnaryOp: Sized {
 /// Implementors provide the operation-specific construction, operand
 /// resolution, and computation while the common decoding and execution
 /// logic is provided by this trait.
-pub trait BinaryOp: Sized {
+pub trait BinaryOp: Lc3Op {
     /// Constructs the operation from its decoded operands.
     fn from_parts(dr: Register, sr1: Register, mode: BinaryOpMode) -> Self;
 
@@ -97,7 +82,7 @@ pub trait BinaryOp: Sized {
     /// # Errors
     /// - If an invalid bit range in requested.
     #[allow(clippy::unreachable)]
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+    fn decode_bin_op(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let raw = instruction.raw();
         let dr = raw.decode_register(DR_FIELD)?;
         let sr1 = raw.decode_register(SR1_FIELD)?;
@@ -117,7 +102,7 @@ pub trait BinaryOp: Sized {
     fn operands(self, vm: &VirtualMachine) -> BinaryOperands;
 
     /// Executes the binary operation and updates the condition code.
-    fn execute(self, vm: &mut VirtualMachine) {
+    fn execute_bin_op(self, vm: &mut VirtualMachine) {
         let operands = Self::operands(self, vm);
         let result = Self::operate(operands.lhs, operands.rhs);
 
@@ -135,7 +120,7 @@ pub trait BinaryOp: Sized {
 ///
 /// Implementors provide the operation-specific offset decoding and execution,
 /// while this trait provides the common instruction decoding logic.
-pub trait MemoryOp: Sized {
+pub trait MemoryOp: Lc3Op {
     /// The offset representation used by this memory operation.
     type Offset: MemoryOffset;
 
@@ -148,7 +133,7 @@ pub trait MemoryOp: Sized {
     ///
     /// Returns [`InstructionError`] if an invalid bit range is requested while
     /// decoding the offset.
-    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError>;
+    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, Lc3Error>;
 
     /// Decodes a memory operation from a decoded instruction.
     ///
@@ -159,14 +144,11 @@ pub trait MemoryOp: Sized {
     ///
     /// Returns [`InstructionError`] if an invalid bit range is requested while
     /// decoding the instruction.
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+    fn decode_mem_op(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let offset: Self::Offset = Self::offset(&instruction)?;
         let register = instruction.raw().decode_register(MEM_OP_REG_FIELD)?;
         Ok(Self::from_parts(register, offset))
     }
-
-    /// Executes the memory operation.
-    fn execute(self, vm: &mut VirtualMachine);
 }
 
 /// Provides shared execution logic for LC-3 memory load operations.
@@ -224,34 +206,11 @@ pub trait MemoryStoreOp: MemoryOp {
     }
 }
 
-pub trait ControlFlowOp {
-    /// Decodes a control flow operation from a decoded instruction.
-    /// Each implementor of the trait must provide its own decoding logic.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`InstructionError`] if an invalid bit range is requested while
-    /// decoding the instruction.
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError>
-    where
-        Self: Sized;
-
-    /// Executes the control flow operation, potentially altering the
-    /// [`VirtualMachine`] state.
-    fn execute(self, vm: &mut VirtualMachine);
-}
-
 /// Contains the resolved operands required to execute a binary operation.
 pub struct BinaryOperands {
     dr: Register,
     lhs: u16,
     rhs: u16,
-}
-
-/// Contains the resolved operands required to execute a unary operation.
-pub struct UnaryOperands {
-    dr: Register,
-    value: u16,
 }
 
 /// Contains the resolved operands required for a memory load operation.

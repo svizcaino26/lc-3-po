@@ -1,5 +1,23 @@
+use std::io::{stdin, stdout, BufReader, BufWriter, Read, Stdin, Stdout, Write};
+
+use crate::error::Lc3Error;
 use crate::instruction::{DecodedInstruction, Opcode, RawInstruction};
 use crate::memory::Address;
+use crate::operation::add::AddOp;
+use crate::operation::and::AndOp;
+use crate::operation::br::BrOp;
+use crate::operation::jmp::JmpOp;
+use crate::operation::jsr::JsrOp;
+use crate::operation::ld::LdOp;
+use crate::operation::ldi::LdiOp;
+use crate::operation::ldr::LdrOp;
+use crate::operation::lea::LeaOp;
+use crate::operation::not::NotOp;
+use crate::operation::st::StOp;
+use crate::operation::sti::StiOp;
+use crate::operation::str::StrOp;
+use crate::operation::trap::TrapOp;
+use crate::operation::Lc3Op;
 use crate::register::{ConditionCode, Register};
 use crate::{memory::Memory, register::Registers};
 
@@ -9,10 +27,32 @@ use crate::{memory::Memory, register::Registers};
 /// for a total of 128 KiB of memory and 10 registers.
 /// 8 general-purpose registers, the program counter, and the
 /// condition code register.
-#[derive(Debug, Default)]
-pub struct VirtualMachine {
+#[derive(Debug)]
+pub struct VirtualMachine<R = BufReader<Stdin>, W = BufWriter<Stdout>> {
     memory: Memory,
     registers: Registers,
+    state: VmState,
+    stdin: R,
+    stdout: W,
+}
+
+#[derive(Default, Debug)]
+enum VmState {
+    #[default]
+    Running,
+    Stopped,
+}
+
+impl Default for VirtualMachine {
+    fn default() -> Self {
+        Self {
+            stdin: BufReader::new(stdin()),
+            stdout: BufWriter::new(stdout()),
+            memory: Memory::default(),
+            registers: Registers::default(),
+            state: VmState::default(),
+        }
+    }
 }
 
 impl VirtualMachine {
@@ -81,30 +121,72 @@ impl VirtualMachine {
 
     /// Runs the virtual machine, fetching and executing instructions until
     /// execution is terminated.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Lc3Error::Instruction`] if instruction decoding fails.
+    /// Returns [`Lc3Error::Io`] if an I/O operation fails.
+    /// Returns [`Lc3Error::UnsupportedInstruction`] if a reserved or unsupported
+    /// operation is encountered.
     #[allow(clippy::todo)]
-    pub fn run(&mut self) {
-        loop {
+    pub fn run(&mut self) -> Result<(), Lc3Error> {
+        while self.is_running() {
             let raw = self.fetch();
-            let decoded = Self::decode(raw);
-            match decoded.opcode() {
-                Opcode::Br => todo!(),
-                Opcode::Add => todo!(),
-                Opcode::Ld => todo!(),
-                Opcode::St => todo!(),
-                Opcode::Jsr => todo!(),
-                Opcode::And => todo!(),
-                Opcode::Ldr => todo!(),
-                Opcode::Str => todo!(),
-                Opcode::Rti => todo!(),
-                Opcode::Not => todo!(),
-                Opcode::Ldi => todo!(),
-                Opcode::Sti => todo!(),
-                Opcode::Jmp => todo!(),
-                Opcode::Res => todo!(),
-                Opcode::Lea => todo!(),
-                Opcode::Trap => todo!(),
+            let instruction = Self::decode(raw);
+            match instruction.opcode() {
+                Opcode::Br => BrOp::decode(instruction)?.execute(self)?,
+                Opcode::Add => AddOp::decode(instruction)?.execute(self)?,
+                Opcode::Ld => LdOp::decode(instruction)?.execute(self)?,
+                Opcode::St => StOp::decode(instruction)?.execute(self)?,
+                Opcode::Jsr => JsrOp::decode(instruction)?.execute(self)?,
+                Opcode::And => AndOp::decode(instruction)?.execute(self)?,
+                Opcode::Ldr => LdrOp::decode(instruction)?.execute(self)?,
+                Opcode::Str => StrOp::decode(instruction)?.execute(self)?,
+                Opcode::Rti | Opcode::Res => {
+                    return Err(Lc3Error::UnsupportedInstruction(*instruction.opcode()))
+                }
+                Opcode::Not => NotOp::decode(instruction)?.execute(self)?,
+                Opcode::Ldi => LdiOp::decode(instruction)?.execute(self)?,
+                Opcode::Sti => StiOp::decode(instruction)?.execute(self)?,
+                Opcode::Jmp => JmpOp::decode(instruction)?.execute(self)?,
+                Opcode::Lea => LeaOp::decode(instruction)?.execute(self)?,
+                Opcode::Trap => TrapOp::decode(instruction)?.execute(self)?,
             }
         }
+        Ok(())
+    }
+
+    /// Halts execution.
+    pub const fn halt(&mut self) {
+        self.state = VmState::Stopped;
+    }
+
+    /// Checks if the [`VirtualMachine`] is in a running state.
+    #[must_use]
+    pub const fn is_running(&self) -> bool {
+        matches!(self.state, VmState::Running)
+    }
+
+    /// Reads a single byte from [`Stdin`]
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if the underlying IO operation fails.
+    pub fn read_byte(&mut self) -> Result<u8, std::io::Error> {
+        let mut byte = [0u8];
+        self.stdin.read_exact(&mut byte)?;
+        Ok(byte[0])
+    }
+
+    /// Writes a slice of bytes to [`Stdout`]
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] if the underlying IO operation fails.
+    pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), std::io::Error> {
+        self.stdout.write_all(bytes)?;
+        self.stdout.flush()?;
+        Ok(())
     }
 }
 

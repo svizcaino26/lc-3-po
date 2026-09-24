@@ -1,5 +1,7 @@
+use crate::error::Lc3Error;
+use crate::operation::Lc3Op;
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
+    instruction::DecodedInstruction,
     operation::{
         sign_extend, MemoryLoadOp, MemoryOp, MemoryOperands, Offset9, OFFSET_9_BIT_COUNT,
         PC_OFFSET_9_FIELD,
@@ -17,6 +19,17 @@ pub struct LdOp {
     offset: Offset9,
 }
 
+impl Lc3Op for LdOp {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
+        Self::decode_mem_op(instruction)
+    }
+
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
+        self.execute_load(vm);
+        Ok(())
+    }
+}
+
 impl MemoryOp for LdOp {
     type Offset = Offset9;
 
@@ -27,13 +40,9 @@ impl MemoryOp for LdOp {
         }
     }
 
-    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError> {
+    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, Lc3Error> {
         let offset = instruction.raw().bits(PC_OFFSET_9_FIELD)?;
         Ok(Offset9(offset))
-    }
-
-    fn execute(self, vm: &mut VirtualMachine) {
-        self.execute_load(vm);
     }
 }
 impl MemoryLoadOp for LdOp {
@@ -82,7 +91,7 @@ mod tests {
 
         let ld_op = LdOp::decode(decoded).unwrap();
 
-        ld_op.execute(&mut vm);
+        ld_op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(dr), 0x0001);
         assert_eq!(vm.read_cond(), ConditionCode::Pos);
@@ -99,7 +108,7 @@ mod tests {
 
         let ld_op = LdOp::decode(decoded).unwrap();
 
-        ld_op.execute(&mut vm);
+        ld_op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(dr), 0x0000);
         assert_eq!(vm.read_cond(), ConditionCode::Zro);
@@ -116,7 +125,7 @@ mod tests {
 
         let ld_op = LdOp::decode(decoded).unwrap();
 
-        ld_op.execute(&mut vm);
+        ld_op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_register(dr), 0xFFFF);
         assert_eq!(vm.read_cond(), ConditionCode::Neg);

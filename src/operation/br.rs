@@ -5,9 +5,11 @@ const P_FLAG: u8 = 1;
 
 use std::ops::RangeInclusive;
 
+use crate::error::Lc3Error;
+use crate::operation::Lc3Op;
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
-    operation::{sign_extend, ControlFlowOp, Offset9, OFFSET_9_BIT_COUNT, PC_OFFSET_9_FIELD},
+    instruction::DecodedInstruction,
+    operation::{sign_extend, Offset9, OFFSET_9_BIT_COUNT, PC_OFFSET_9_FIELD},
     register::ConditionCode,
     vm::VirtualMachine,
 };
@@ -23,8 +25,8 @@ pub struct BrOp {
     offset: Offset9,
 }
 
-impl ControlFlowOp for BrOp {
-    fn decode(instruction: DecodedInstruction) -> Result<Self, InstructionError> {
+impl Lc3Op for BrOp {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
         let raw = instruction.raw();
         let condition_flags = raw.bits_as::<u8>(CONDITION_FLAGS_FIELD)?;
         let offset = raw.bits(PC_OFFSET_9_FIELD)?;
@@ -37,7 +39,7 @@ impl ControlFlowOp for BrOp {
     /// Checks whether any condition flag encoded in the instruction matches the
     /// [`VirtualMachine`] condition code. If a match is found, updates the
     /// program counter using the encoded offset.
-    fn execute(self, vm: &mut VirtualMachine) {
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         let cond = vm.read_cond();
         let should_branch = (self.condition_flags & N_FLAG != 0 && cond == ConditionCode::Neg)
             || (self.condition_flags & Z_FLAG != 0 && cond == ConditionCode::Zro)
@@ -48,6 +50,7 @@ impl ControlFlowOp for BrOp {
             let address = vm.read_pc().wrapping_add(sext_offset);
             vm.set_pc(address);
         }
+        Ok(())
     }
 }
 
@@ -67,7 +70,7 @@ mod tests {
 
         let op = BrOp::decode(decoded).unwrap();
 
-        op.execute(&mut vm);
+        op.execute(&mut vm).unwrap();
 
         assert_eq!(pc_before, vm.read_pc());
     }
@@ -80,7 +83,7 @@ mod tests {
 
         let op = BrOp::decode(decoded).unwrap();
 
-        op.execute(&mut vm);
+        op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_pc(), Address::from(0x2FFF));
     }
@@ -93,7 +96,7 @@ mod tests {
 
         let op = BrOp::decode(decoded).unwrap();
 
-        op.execute(&mut vm);
+        op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_pc(), Address::from(0x3000));
     }

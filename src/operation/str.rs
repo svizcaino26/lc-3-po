@@ -1,5 +1,7 @@
+use crate::error::Lc3Error;
+use crate::operation::Lc3Op;
 use crate::{
-    instruction::{DecodedInstruction, InstructionError},
+    instruction::DecodedInstruction,
     memory::Address,
     operation::{
         sign_extend, MemoryOp, MemoryOperands, MemoryStoreOp, Offset6, OFFSET_6_BIT_COUNT,
@@ -19,6 +21,17 @@ pub struct StrOp {
     offset: Offset6,
 }
 
+impl Lc3Op for StrOp {
+    fn decode(instruction: DecodedInstruction) -> Result<Self, Lc3Error> {
+        Self::decode_mem_op(instruction)
+    }
+
+    fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
+        self.execute_store(vm);
+        Ok(())
+    }
+}
+
 impl MemoryOp for StrOp {
     type Offset = Offset6;
 
@@ -29,7 +42,7 @@ impl MemoryOp for StrOp {
         }
     }
 
-    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, InstructionError> {
+    fn offset(instruction: &DecodedInstruction) -> Result<Self::Offset, Lc3Error> {
         let raw = instruction.raw();
         let offset = raw.bits(OFFSET_6_FIELD)?;
         let register = raw.decode_register(SR1_FIELD)?;
@@ -37,10 +50,6 @@ impl MemoryOp for StrOp {
             base_r: register,
             value: offset,
         })
-    }
-
-    fn execute(self, vm: &mut VirtualMachine) {
-        self.execute_store(vm);
     }
 }
 
@@ -63,6 +72,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn execute_stores_register_value_at_base_register_relative_address() {
         let mut vm = VirtualMachine::default();
         vm.write_register(Register::R1, 0x4002);
@@ -78,7 +88,7 @@ mod tests {
             offset,
         };
 
-        op.execute(&mut vm);
+        op.execute(&mut vm).unwrap();
 
         assert_eq!(vm.read_memory(Address::from(0x4000)), 0x4321);
     }
