@@ -8,17 +8,23 @@ struct Image {
 }
 
 impl Image {
+    /// Reads bytes from an LC-3 image file.
+    ///
+    /// # Errors
+    ///
+    /// - Returns [`Lc3Error::Io`] if the undelying file read operation fails.
+    pub fn read_image(file_path: PathBuf) -> Result<Vec<u8>, Lc3Error> {
+        Ok(std::fs::read(file_path)?)
+    }
+
     /// Parses an LC-3 compiled image file to be loaded by the [`VirtualMachine`].
     ///
     /// # Errors
     ///
     /// - Returns [`Lc3Error::EmptyImageFile`] if the file has zero bytes.
     /// - Returns [`Lc3Error::OddImageLength`] if the image has an uneven number of bytes.
-    /// - Returns [`Lc3Error::Io`] if the undelying file read operation fails.
     #[allow(clippy::indexing_slicing)]
-    pub fn parse_image(file_path: PathBuf) -> Result<Self, Lc3Error> {
-        let data = std::fs::read(file_path)?;
-
+    pub fn parse_image(data: &[u8]) -> Result<Self, Lc3Error> {
         let (chunks, remainder) = data.as_chunks::<2>();
 
         if chunks.is_empty() {
