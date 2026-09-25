@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use crate::{error::Lc3Error, memory::Address};
 
+#[derive(Debug)]
 struct Image {
     origin: Address,
     words: Vec<u16>,
@@ -43,5 +44,36 @@ impl Image {
             .collect();
 
         Ok(Self { origin, words })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::assert_matches;
+
+    use super::*;
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn image_is_parsed() {
+        let image = Image::parse_image(&[0x30, 0x00, 0x12, 0x34, 0xAB, 0xCD]).unwrap();
+
+        assert_eq!(image.origin, Address::from(0x3000));
+
+        assert_eq!(image.words, [0x1234, 0xABCD]);
+    }
+
+    #[test]
+    fn odd_image_length() {
+        let image = Image::parse_image(&[0x30, 0x00, 0x12, 0x34, 0xAB]);
+
+        assert_matches!(image, Err(Lc3Error::OddImageLength));
+    }
+
+    #[test]
+    fn empty_image() {
+        let image = Image::parse_image(&[]);
+
+        assert_matches!(image, Err(Lc3Error::EmptyImageFile));
     }
 }
