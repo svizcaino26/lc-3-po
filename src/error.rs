@@ -15,8 +15,14 @@ pub enum Lc3Error {
     #[error("Unsupported instructioin : {0:?}")]
     UnsupportedInstruction(Opcode),
 
-    #[error("memory address wrapped around without finding a null terminator")]
+    #[error("Memory address wrapped around without finding a null terminator")]
     MemoryLoop,
+
+    #[error("Expected even number of bytes from image")]
+    OddImageLength,
+
+    #[error("Image file contains zero bytes")]
+    EmptyImageFile,
 }
 
 #[derive(Debug, PartialEq, Eq, Error)]
