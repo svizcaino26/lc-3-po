@@ -43,7 +43,11 @@ impl RawInstruction {
 
         let len = end - start + 1;
         let shift = INSTRUCTION_BITS - end;
-        let mask = (1u16 << len) - 1;
+        let mask = if len == INSTRUCTION_BITS {
+            0xFFFF
+        } else {
+            (1u16 << len) - 1
+        };
         Ok((self.0 >> shift) & mask)
     }
 
@@ -178,10 +182,12 @@ mod tests {
         let raw_1 = RawInstruction::from(0xF000);
         let raw_2 = RawInstruction::from(0x10F0);
         let raw_3 = RawInstruction::from(0xF020);
+        let raw_4 = RawInstruction::from(0xFFCC);
 
         assert_eq!(raw_1.bits(1..=4), Ok(0x000F));
         assert_eq!(raw_2.bits(1..=4), Ok(0x0001));
         assert_eq!(raw_3.bits(11..=11), Ok(0x0001));
+        assert_eq!(raw_4.bits(1..=16), Ok(0xFFCC));
     }
 
     #[test]
