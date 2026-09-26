@@ -1,6 +1,7 @@
 use std::io::{stdin, stdout, BufReader, BufWriter, Read, Stdin, Stdout, Write};
 
 use crate::error::Lc3Error;
+use crate::image::Image;
 use crate::instruction::{DecodedInstruction, Opcode, RawInstruction};
 use crate::memory::Address;
 use crate::operation::add::AddOp;
@@ -187,6 +188,15 @@ impl VirtualMachine {
         self.stdout.write_all(bytes)?;
         self.stdout.flush()?;
         Ok(())
+    }
+
+    pub fn load_image(&mut self, image: Image) {
+        self.set_pc(image.origin());
+        let mut address = self.read_pc();
+        for word in image.words() {
+            self.write_memory(address, word);
+            address = address.wrapping_add(1);
+        }
     }
 }
 

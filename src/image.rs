@@ -1,9 +1,9 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use crate::{error::Lc3Error, memory::Address};
 
 #[derive(Debug)]
-struct Image {
+pub struct Image {
     origin: Address,
     words: Vec<u16>,
 }
@@ -14,7 +14,7 @@ impl Image {
     /// # Errors
     ///
     /// - Returns [`Lc3Error::Io`] if the undelying file read operation fails.
-    pub fn read_image(file_path: PathBuf) -> Result<Vec<u8>, Lc3Error> {
+    pub fn read_image(file_path: &Path) -> Result<Vec<u8>, Lc3Error> {
         Ok(std::fs::read(file_path)?)
     }
 
@@ -44,6 +44,16 @@ impl Image {
             .collect();
 
         Ok(Self { origin, words })
+    }
+
+    #[must_use]
+    pub const fn origin(&self) -> Address {
+        self.origin
+    }
+
+    #[must_use]
+    pub fn words(self) -> Vec<u16> {
+        self.words
     }
 }
 
