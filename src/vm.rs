@@ -44,6 +44,19 @@ enum VmState {
     Stopped,
 }
 
+#[derive(Debug, Copy, Clone)]
+enum MmIo {
+    Kbsr = 0xFE00,
+    Kbdr = 0xFE02,
+}
+
+impl MmIo {
+    #[allow(clippy::as_conversions)]
+    pub fn address(self) -> Address {
+        Address::from(self as u16)
+    }
+}
+
 impl Default for VirtualMachine {
     fn default() -> Self {
         Self {
@@ -111,7 +124,10 @@ impl VirtualMachine {
 
     /// Returns the underlying `u16` at the specified [`Address`]
     #[must_use]
-    pub fn read_memory(&self, address: Address) -> u16 {
+    pub fn read_memory(&mut self, address: Address) -> u16 {
+        if address == MmIo::Kbsr.address() {
+            let _ = self.handle_keyboard();
+        }
         self.memory.read(address)
     }
 
@@ -197,6 +213,18 @@ impl VirtualMachine {
             self.write_memory(address, word);
             address = address.wrapping_add(1);
         }
+    }
+
+    /// # Errors
+    pub fn handle_keyboard(&mut self) -> Result<(), Lc3Error> {
+        let byte = self.read_byte()?;
+        if byte != 0 {
+            self.write_memory(MmIo::Kbsr.address(), 1 << 15);
+            self.write_memory(MmIo::Kbdr.address(), u16::from(byte));
+        } else {
+            self.write_memory(MmIo::Kbsr.address(), 0);
+        }
+        Ok(())
     }
 }
 
