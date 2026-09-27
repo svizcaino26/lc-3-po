@@ -1,5 +1,6 @@
 use std::ops::RangeInclusive;
 
+use inquire::InquireError;
 use thiserror::Error;
 
 use crate::instruction::Opcode;
@@ -23,6 +24,9 @@ pub enum Lc3Error {
 
     #[error("Image file contains zero bytes")]
     EmptyImageFile,
+
+    #[error("Failed to process prompt")]
+    Inquire(#[from] InquireError),
 }
 
 #[derive(Debug, PartialEq, Eq, Error)]
