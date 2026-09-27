@@ -28,7 +28,7 @@ impl Lc3Op for LdiOp {
     }
 
     fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
-        self.execute_load(vm);
+        self.execute_load(vm)?;
         Ok(())
     }
 }
@@ -60,10 +60,11 @@ impl MemoryLoadOp for LdiOp {
     /// Computes a PC-relative address and performs two memory reads:
     /// the first obtains the address of the value to load, and the second
     /// obtains the value itself.
-    fn operate(offset: Self::Offset, vm: &VirtualMachine) -> u16 {
+    fn operate(offset: Self::Offset, vm: &mut VirtualMachine) -> Result<u16, Lc3Error> {
         let sext_offset = sign_extend(offset.value(), OFFSET_9_BIT_COUNT);
         let address = vm.read_pc().wrapping_add(sext_offset);
-        vm.read_memory(Address::from(vm.read_memory(address)))
+        let value = vm.read_memory(address)?;
+        vm.read_memory(Address::from(value))
     }
 }
 

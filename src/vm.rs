@@ -22,6 +22,8 @@ use crate::operation::Lc3Op;
 use crate::register::{ConditionCode, Register};
 use crate::{memory::Memory, register::Registers};
 
+const KSBR_READY: u16 = 1 << 15;
+
 /// Represents an LC-3 virtual machine.
 ///
 /// The architecture spec defines 65536 16 bit memory locations
@@ -123,12 +125,15 @@ impl VirtualMachine {
     }
 
     /// Returns the underlying `u16` at the specified [`Address`]
-    #[must_use]
-    pub fn read_memory(&mut self, address: Address) -> u16 {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the underlying I/O operation fails.
+    pub fn read_memory(&mut self, address: Address) -> Result<u16, Lc3Error> {
         if address == MmIo::Kbsr.address() {
-            let _ = self.handle_keyboard();
+            self.handle_keyboard()?;
         }
-        self.memory.read(address)
+        Ok(self.memory.read(address))
     }
 
     /// Writes a `u16` value at the specified [`Address`]
@@ -206,24 +211,32 @@ impl VirtualMachine {
         Ok(())
     }
 
+    /// Loads an [`Image`] into memory and sets the program counter to its origin.
     pub fn load_image(&mut self, image: Image) {
-        self.set_pc(image.origin());
-        let mut address = self.read_pc();
+        let mut address = image.origin();
+        self.set_pc(address);
+
         for word in image.words() {
             self.write_memory(address, word);
             address = address.wrapping_add(1);
         }
     }
 
+    /// Updateds the keyboard memory-mapped registers with the next available byte.
+    ///
     /// # Errors
+    ///
+    /// Returns [`Lc3Error::Io`] if the underlying IO operation fails.
     pub fn handle_keyboard(&mut self) -> Result<(), Lc3Error> {
         let byte = self.read_byte()?;
+
         if byte != 0 {
-            self.write_memory(MmIo::Kbsr.address(), 1 << 15);
+            self.write_memory(MmIo::Kbsr.address(), KSBR_READY);
             self.write_memory(MmIo::Kbdr.address(), u16::from(byte));
         } else {
             self.write_memory(MmIo::Kbsr.address(), 0);
         }
+
         Ok(())
     }
 }

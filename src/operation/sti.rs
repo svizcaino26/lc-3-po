@@ -28,7 +28,7 @@ impl Lc3Op for StiOp {
     }
 
     fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
-        self.execute_store(vm);
+        self.execute_store(vm)?;
         Ok(())
     }
 }
@@ -57,15 +57,18 @@ impl MemoryStoreOp for StiOp {
         }
     }
 
-    fn compute_address(offset: Self::Offset, vm: &VirtualMachine) -> crate::memory::Address {
+    fn compute_address(offset: Self::Offset, vm: &mut VirtualMachine) -> Result<Address, Lc3Error> {
         let sext_offset = sign_extend(offset.value(), OFFSET_9_BIT_COUNT);
         let address_indirect = vm.read_pc().wrapping_add(sext_offset);
-        Address::from(vm.read_memory(address_indirect))
+        let value = vm.read_memory(address_indirect)?;
+        Ok(Address::from(value))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     #[test]
@@ -88,6 +91,6 @@ mod tests {
 
         op.execute(&mut vm).unwrap();
 
-        assert_eq!(vm.read_memory(target_address), 0x4321);
+        assert_matches!(vm.read_memory(target_address), Ok(0x4321));
     }
 }

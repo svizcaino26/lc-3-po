@@ -164,16 +164,26 @@ pub trait MemoryLoadOp: Sized + MemoryOp {
     fn operands(self) -> MemoryOperands<Self::Offset>;
 
     /// Performs the operation-specific computation.
-    fn operate(offset: Self::Offset, vm: &VirtualMachine) -> u16;
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the undelying [`Memory`] operation fails.
+    fn operate(offset: Self::Offset, vm: &mut VirtualMachine) -> Result<u16, Lc3Error>;
 
     /// Executes the memory load operation and updates the condition code.
-    fn execute_load(self, vm: &mut VirtualMachine) {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the undelying [`Memory`] operation fails.
+    fn execute_load(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         let operands: MemoryOperands<Self::Offset> = Self::operands(self);
-        let result = Self::operate(operands.offset, vm);
+        let result = Self::operate(operands.offset, vm)?;
 
         vm.write_register(operands.register, result);
 
         vm.set_cond(result);
+
+        Ok(())
     }
 }
 
@@ -191,18 +201,28 @@ pub trait MemoryStoreOp: MemoryOp {
     fn operands(self) -> MemoryOperands<Self::Offset>;
 
     /// Computes the memory address targeted by the store operation.
-    fn compute_address(offset: Self::Offset, vm: &VirtualMachine) -> Address;
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the undelying [`Memory`] operation fails.
+    fn compute_address(offset: Self::Offset, vm: &mut VirtualMachine) -> Result<Address, Lc3Error>;
 
     /// Executes the memory store operation.
     ///
     /// The source register's value is written to the address computed by
     /// [`Self::compute_address`].
-    fn execute_store(self, vm: &mut VirtualMachine) {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the undelying [`Memory`] operation fails.
+    fn execute_store(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
         let operands: MemoryOperands<Self::Offset> = Self::operands(self);
 
-        let address = Self::compute_address(operands.offset, vm);
+        let address = Self::compute_address(operands.offset, vm)?;
 
         vm.write_memory(address, vm.read_register(operands.register));
+
+        Ok(())
     }
 }
 
