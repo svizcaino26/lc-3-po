@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+inquire = "0.9.4"
+termios = "0.3.3"
 thiserror = "2.0.20"
 
 [lints.clippy]
