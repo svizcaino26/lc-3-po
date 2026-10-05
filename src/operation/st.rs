@@ -1,4 +1,5 @@
 use crate::error::Lc3Error;
+use crate::memory::Address;
 use crate::operation::Lc3Op;
 use crate::{
     instruction::DecodedInstruction,
@@ -26,7 +27,7 @@ impl Lc3Op for StOp {
     }
 
     fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
-        self.execute_store(vm);
+        self.execute_store(vm)?;
         Ok(())
     }
 }
@@ -55,14 +56,16 @@ impl MemoryStoreOp for StOp {
         }
     }
 
-    fn compute_address(offset: Self::Offset, vm: &VirtualMachine) -> crate::memory::Address {
+    fn compute_address(offset: Self::Offset, vm: &mut VirtualMachine) -> Result<Address, Lc3Error> {
         let sext_offset = sign_extend(offset.value(), OFFSET_9_BIT_COUNT);
-        vm.read_pc().wrapping_add(sext_offset)
+        Ok(vm.read_pc().wrapping_add(sext_offset))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     #[test]
@@ -81,6 +84,6 @@ mod tests {
 
         op.execute(&mut vm).unwrap();
 
-        assert_eq!(vm.read_memory(address), 0x4321);
+        assert_matches!(vm.read_memory(address), Ok(0x4321));
     }
 }

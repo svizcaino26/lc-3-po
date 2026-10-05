@@ -26,7 +26,7 @@ impl Lc3Op for LdrOp {
     }
 
     fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
-        self.execute_load(vm);
+        self.execute_load(vm)?;
         Ok(())
     }
 }
@@ -62,7 +62,7 @@ impl MemoryLoadOp for LdrOp {
 
     /// Reads the value at the address obtained by adding the sign-extended
     /// offset to the value stored at the base register.
-    fn operate(offset: Self::Offset, vm: &VirtualMachine) -> u16 {
+    fn operate(offset: Self::Offset, vm: &mut VirtualMachine) -> Result<u16, Lc3Error> {
         let sext_offset = sign_extend(offset.value(), OFFSET_6_BIT_COUNT);
 
         let address = Address::from(vm.read_register(offset.base_r()).wrapping_add(sext_offset));

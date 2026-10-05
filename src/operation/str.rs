@@ -27,7 +27,7 @@ impl Lc3Op for StrOp {
     }
 
     fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
-        self.execute_store(vm);
+        self.execute_store(vm)?;
         Ok(())
     }
 }
@@ -61,14 +61,18 @@ impl MemoryStoreOp for StrOp {
         }
     }
 
-    fn compute_address(offset: Self::Offset, vm: &VirtualMachine) -> crate::memory::Address {
+    fn compute_address(offset: Self::Offset, vm: &mut VirtualMachine) -> Result<Address, Lc3Error> {
         let sext_offset = sign_extend(offset.value(), OFFSET_6_BIT_COUNT);
-        Address::from(vm.read_register(offset.base_r()).wrapping_add(sext_offset))
+        Ok(Address::from(
+            vm.read_register(offset.base_r()).wrapping_add(sext_offset),
+        ))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     #[test]
@@ -90,6 +94,6 @@ mod tests {
 
         op.execute(&mut vm).unwrap();
 
-        assert_eq!(vm.read_memory(Address::from(0x4000)), 0x4321);
+        assert_matches!(vm.read_memory(Address::from(0x4000)), Ok(0x4321));
     }
 }

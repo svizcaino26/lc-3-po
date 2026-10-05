@@ -25,7 +25,7 @@ impl Lc3Op for LdOp {
     }
 
     fn execute(self, vm: &mut VirtualMachine) -> Result<(), Lc3Error> {
-        self.execute_load(vm);
+        self.execute_load(vm)?;
         Ok(())
     }
 }
@@ -55,7 +55,7 @@ impl MemoryLoadOp for LdOp {
 
     /// Reads the value at the address obtained by adding the sign-extended
     /// offset to the incremented program counter.
-    fn operate(offset: Self::Offset, vm: &VirtualMachine) -> u16 {
+    fn operate(offset: Self::Offset, vm: &mut VirtualMachine) -> Result<u16, Lc3Error> {
         let sext_offset = sign_extend(offset.value(), OFFSET_9_BIT_COUNT);
         let address = vm.read_pc().wrapping_add(sext_offset);
         vm.read_memory(address)

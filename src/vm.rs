@@ -1,6 +1,7 @@
 use std::io::{stdin, stdout, BufReader, BufWriter, Read, Stdin, Stdout, Write};
 
 use crate::error::Lc3Error;
+use crate::image::Image;
 use crate::instruction::{DecodedInstruction, Opcode, RawInstruction};
 use crate::memory::Address;
 use crate::operation::add::AddOp;
@@ -20,6 +21,8 @@ use crate::operation::trap::TrapOp;
 use crate::operation::Lc3Op;
 use crate::register::{ConditionCode, Register};
 use crate::{memory::Memory, register::Registers};
+
+const KSBR_READY: u16 = 1 << 15;
 
 /// Represents an LC-3 virtual machine.
 ///
@@ -41,6 +44,19 @@ enum VmState {
     #[default]
     Running,
     Stopped,
+}
+
+#[derive(Debug, Copy, Clone)]
+enum MmIo {
+    Kbsr = 0xFE00,
+    Kbdr = 0xFE02,
+}
+
+impl MmIo {
+    #[allow(clippy::as_conversions)]
+    pub fn address(self) -> Address {
+        Address::from(self as u16)
+    }
 }
 
 impl Default for VirtualMachine {
@@ -109,9 +125,15 @@ impl VirtualMachine {
     }
 
     /// Returns the underlying `u16` at the specified [`Address`]
-    #[must_use]
-    pub fn read_memory(&self, address: Address) -> u16 {
-        self.memory.read(address)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the underlying I/O operation fails.
+    pub fn read_memory(&mut self, address: Address) -> Result<u16, Lc3Error> {
+        if address == MmIo::Kbsr.address() {
+            self.handle_keyboard()?;
+        }
+        Ok(self.memory.read(address))
     }
 
     /// Writes a `u16` value at the specified [`Address`]
@@ -186,6 +208,35 @@ impl VirtualMachine {
     pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), std::io::Error> {
         self.stdout.write_all(bytes)?;
         self.stdout.flush()?;
+        Ok(())
+    }
+
+    /// Loads an [`Image`] into memory and sets the program counter to its origin.
+    pub fn load_image(&mut self, image: Image) {
+        let mut address = image.origin();
+        self.set_pc(address);
+
+        for word in image.words() {
+            self.write_memory(address, word);
+            address = address.wrapping_add(1);
+        }
+    }
+
+    /// Updateds the keyboard memory-mapped registers with the next available byte.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Lc3Error::Io`] if the underlying IO operation fails.
+    pub fn handle_keyboard(&mut self) -> Result<(), Lc3Error> {
+        let byte = self.read_byte()?;
+
+        if byte != 0 {
+            self.write_memory(MmIo::Kbsr.address(), KSBR_READY);
+            self.write_memory(MmIo::Kbdr.address(), u16::from(byte));
+        } else {
+            self.write_memory(MmIo::Kbsr.address(), 0);
+        }
+
         Ok(())
     }
 }

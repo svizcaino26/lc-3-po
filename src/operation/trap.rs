@@ -90,7 +90,7 @@ impl TrapRoutine {
         let mut buff: Vec<u8> = Vec::new();
 
         loop {
-            let word = vm.read_memory(address);
+            let word = vm.read_memory(address)?;
             if word != 0 {
                 let byte = u8::try_from(word & 0x0FF).expect("mask value is 8 bits");
                 buff.push(byte);
@@ -148,7 +148,7 @@ impl TrapRoutine {
         let loop_address = address;
 
         loop {
-            let word = vm.read_memory(address);
+            let word = vm.read_memory(address)?;
 
             if word != 0 {
                 let first_byte = u8::try_from(word & 0x00FF).expect("mask value is 8 bits");

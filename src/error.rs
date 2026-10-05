@@ -1,5 +1,6 @@
 use std::ops::RangeInclusive;
 
+use inquire::InquireError;
 use thiserror::Error;
 
 use crate::instruction::Opcode;
@@ -15,8 +16,17 @@ pub enum Lc3Error {
     #[error("Unsupported instructioin : {0:?}")]
     UnsupportedInstruction(Opcode),
 
-    #[error("memory address wrapped around without finding a null terminator")]
+    #[error("Memory address wrapped around without finding a null terminator")]
     MemoryLoop,
+
+    #[error("Expected even number of bytes from image")]
+    OddImageLength,
+
+    #[error("Image file contains zero bytes")]
+    EmptyImageFile,
+
+    #[error("Failed to process prompt")]
+    Inquire(#[from] InquireError),
 }
 
 #[derive(Debug, PartialEq, Eq, Error)]
